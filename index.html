@@ -44,7 +44,7 @@
   .bar{position:relative;height:2px;background:rgba(255,255,255,.16);margin:16px 0 0}
   .bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--w)}
   .bar span{position:absolute;left:0;top:-13px;font-size:8px;letter-spacing:.26em;color:var(--g2)}
-  #stam i{background:var(--g1)}
+  #stam{display:none}
   #ult.full i{box-shadow:0 0 10px #fff;animation:pulse .7s infinite alternate}
   #ult.full span{color:var(--w)}
   @keyframes pulse{from{opacity:.55}to{opacity:1}}
@@ -170,7 +170,8 @@ const CFG = {
   rounds:  20, bossRounds: [5, 10, 15, 20], prepTime: 5,
   player:  { walk: 8, sprint: 13, stamina: 100, staminaDrain: 22, staminaRegen: 16 },
   crit:    { chance: 0.12, mult: 2.0 },
-  target:  { danger: 12 },                                  // bu mesafeden yakına giren yaratık her zaman ilk hedef
+  target:  { danger: 12 },
+  cam:     { back: 6.5, la: 5.6, y: 6.2, ahead: 13, lookLa: -3, lookY: 1.2 },   // sabit köşe kamerası: karakterin arka-üst köşesinden (koridor-yerel)                                  // bu mesafeden yakına giren yaratık her zaman ilk hedef
   combo:   { window: 2.0, icd: 0.9, splash: 0.7, echoLvl: 0.25 },
   ult:     { need: 100, perKill: 3, streakBonus: 0.03, streakCap: 20, radius: 17, dmg: 170, kb: 7 },
   wave:    { baseCount: 8, countPer: 2, baseHp: 42, hpGrowth: 1.15, spawnWindow: 24, speed: 3.2 },
@@ -295,7 +296,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x8f8f8a, 60, 230);
-const camera = new THREE.PerspectiveCamera(88, 1, 0.3, 700);
+const camera = new THREE.PerspectiveCamera(100, 1, 0.3, 700);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x4a4a46, 0.7));
 const sun = new THREE.DirectionalLight(0xffffff, 0.8); sun.position.set(50, 90, 30); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005;
@@ -472,7 +473,7 @@ function buildArena() {
   box(hw * 2, 2.4, 2.8, 0, H - 1.2, a0 + 1.4, cA, true); box(0.16, H - 2.4, 0.3, 0, (H - 2.4) / 2, a0 + 1.1, ink);
   const veil = new THREE.Mesh(new THREE.PlaneGeometry(hw * 2 - 5.6, H - 2.4), glow(0xffffff, 0.05)); veil.position.set(0, (H - 2.4) / 2, a0 + 1.9); g.add(veil);
   const base = edge(new THREE.Mesh(new THREE.CylinderGeometry(A.coreR, A.coreR + 1.3, 1.4, 6), cB)); base.position.set(0, 0.7, A.coreAl); base.castShadow = true; g.add(base);
-  const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.7), new THREE.MeshBasicMaterial({ color: col })); core.material.emissive = new THREE.Color(); core.scale.y = 1.6; core.position.set(0, 4.8, A.coreAl); g.add(core);
+  const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.7), mat(col, col, 0.9)); core.scale.y = 1.6; core.position.set(0, 4.8, A.coreAl); g.add(core);
   core.add(new THREE.LineSegments(new THREE.EdgesGeometry(core.geometry), INKL));
   const ring = new THREE.Mesh(new THREE.TorusGeometry(2.9, 0.07, 4, 32), ink); ring.position.copy(core.position); g.add(ring);
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.8, 3, 8, 1, true), glow(col, 0.2)); beam.position.set(0, 7.9, A.coreAl); beam.visible = false; g.add(beam);
@@ -989,7 +990,7 @@ const DesktopSource = {
     addEventListener('blur', () => { this.keys = {}; Input.fire = false; });
     document.addEventListener('pointerlockerror', () => { this.noLock = true; });
     addEventListener('mousemove', e => { if (document.pointerLockElement === canvas || this.noLock) { Input.look.dx += e.movementX; Input.look.dy += e.movementY; } });
-    canvas.addEventListener('mousedown', e => { SFX.init(); if (document.pointerLockElement !== canvas && !this.noLock) { lockPointer(); return; } if (e.button === 0) { Input.fire = true; Input.press('unlock'); } else Input.press('lock'); });
+    canvas.addEventListener('mousedown', () => SFX.init());
     addEventListener('mouseup', e => { if (e.button === 0) Input.fire = false; });
     addEventListener('contextmenu', e => e.preventDefault());
   },
@@ -1002,24 +1003,17 @@ const DesktopSource = {
 };
 function lockPointer() { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { DesktopSource.noLock = true; }); } catch (e) { DesktopSource.noLock = true; } }
 
-const Cam = { yaw: 0, pitch: 0.13, dist: 5.6, shoulder: 2.0, height: 3.5, sens: 0.0023, fov: 88, baseFov: 88 };
+const Cam = { yaw: 0, pitch: 0.13, dist: 5.6, shoulder: 2.0, height: 3.5, sens: 0.0023, fov: 100, baseFov: 100 };
 const _v = new THREE.Vector3(), _dir = new THREE.Vector3();
+/* Sabit kamera: geçidin üst köşesinden, koridoru çaprazlama gören geniş açı. Oyuncu kamerayı yönetmez. */
 function updateCamera(dt) {
-  const p = G.human;
-  if (G.lock && p.tgt && p.tgt.active && Input.look.dx === 0) { let dy = Math.atan2(p.tgt.x - p.x, p.tgt.z - p.z) - Cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); Cam.yaw += dy * Math.min(1, dt * 2.2); }   // kamera kilitli hedefe yumuşakça döner
-  Cam.yaw -= Input.look.dx * Cam.sens; Cam.pitch = clamp(Cam.pitch + Input.look.dy * Cam.sens, -0.2, 1.15);
-  Input.look.dx = Input.look.dy = 0;
-  const fx = Math.sin(Cam.yaw), fz = Math.cos(Cam.yaw), cp = Math.cos(Cam.pitch), sp = Math.sin(Cam.pitch);
-  const px = p.x - fz * Cam.shoulder, py = Cam.height, pz = p.z + fx * Cam.shoulder;
+  const p = G.human, d = p.dir, C = CFG.cam; Input.look.dx = Input.look.dy = 0;
   const SS = CFG.feel.streakShake, sk = FEEL.streak >= SS.from ? Math.min(FEEL.streak, SS.cap) / SS.cap : 0, tr = Math.max(FEEL.trauma, sk * SS.floor);
-  const sh = tr * tr * CFG.feel.shakeMax * (1 + sk * SS.bonus);
-  let cx = px - fx * cp * Cam.dist, cy = py + sp * Cam.dist, cz = pz - fz * cp * Cam.dist;
-  const d = p.dir, al = Math.max(SC.a0 + 0.8, cx * d[0] + cz * d[1]), la = clamp(cx * d[1] - cz * d[0], -SC.hw + 0.7, SC.hw - 0.7);          // kamera koridorun içinde kalır
-  cx = d[0] * al + d[1] * la; cz = d[1] * al - d[0] * la; cy = clamp(cy, 0.6, SC.H - 0.8);
-  camera.position.set(cx + (Math.random() - 0.5) * 2 * sh, cy + (Math.random() - 0.5) * 2 * sh, cz + (Math.random() - 0.5) * 2 * sh);
-  camera.lookAt(px + fx * cp * 12, py - sp * 12, pz + fz * cp * 12);
+  const sh = tr * tr * CFG.feel.shakeMax * (1 + sk * SS.bonus), al = CFG.arena.postAl - C.back, la = C.la, la2 = C.lookLa, al2 = CFG.arena.postAl + C.ahead, j = () => (Math.random() - 0.5) * 2 * sh;
+  camera.position.set(d[0] * al + d[1] * la + j(), C.y + j(), d[1] * al - d[0] * la + j());
+  camera.lookAt(d[0] * al2 + d[1] * la2, C.lookY, d[1] * al2 - d[0] * la2);
   camera.rotation.z += (Math.random() - 0.5) * sh * 0.05;
-  const f = Cam.baseFov + Math.min(2.2, FEEL.kick) * 2.4 + (p.sprinting ? 5 : 0); Cam.fov += (f - Cam.fov) * Math.min(1, dt * 12);
+  const f = Cam.baseFov + Math.min(2.2, FEEL.kick) * 2.4; Cam.fov += (f - Cam.fov) * Math.min(1, dt * 12);
   if (Math.abs(camera.fov - Cam.fov) > 0.01) { camera.fov = Cam.fov; camera.updateProjectionMatrix(); }
 }
 function aimTarget(p, range) {
@@ -1031,37 +1025,22 @@ function aimTarget(p, range) {
   }
   return best;
 }
+/* Müdahale yok: karakter ortada sabit durur; hedefini kendi seçer, ateş eder, ultisini kalabalıkta kendi kullanır.
+   Oyuncuya yalnızca tur arası kart seçimi ve görünüm tuşları kalır. */
 function updateHuman(p, dt) {
-  const P = CFG.player, fx = Math.sin(Cam.yaw), fz = Math.cos(Cam.yaw), rx = -fz, rz = fx;
-  let vx = fx * Input.move.y + rx * Input.move.x, vz = fz * Input.move.y + rz * Input.move.x;
-  p.moving = vx !== 0 || vz !== 0;
-  p.sprinting = Input.sprint && p.moving && !p.exhausted && p.stamina > 0;
-  if (p.sprinting) { p.stamina -= P.staminaDrain * dt; if (p.stamina <= 0) { p.stamina = 0; p.exhausted = true; } }
-  else { p.stamina = Math.min(P.stamina, p.stamina + P.staminaRegen * dt); if (p.stamina > P.stamina * 0.25) p.exhausted = false; }
-  if (p.moving) { const n = Math.hypot(vx, vz), s = p.sprinting ? P.sprint : P.walk; p.x += vx / n * s * dt; p.z += vz / n * s * dt; clampZone(p); }
-  if (p.faceT <= 0) p.faceYaw = Cam.yaw;
+  p.moving = false; p.sprinting = false;
   for (const a of Input.actions) {
-    let err = null;
-    if (a === 'ult') { if (!castUlt(p)) err = 'Ult hazır değil — öldürdükçe dolar.'; }
-
-    else if (a === 'hud') G.hudPin = !G.hudPin;
+    if (a === 'hud') G.hudPin = !G.hudPin;
     else if (a === 'hudoff') document.body.classList.toggle('hud-off');
-    else if (a === 'fovUp' || a === 'fovDown') { Cam.baseFov = clamp(Cam.baseFov + (a === 'fovUp' ? 4 : -4), 60, 112); feed('Görüş açısı: <b>' + Cam.baseFov + '°</b>'); }
+    else if (a === 'fovUp' || a === 'fovDown') { Cam.baseFov = clamp(Cam.baseFov + (a === 'fovUp' ? 4 : -4), 60, 124); feed('Görüş açısı: <b>' + Cam.baseFov + '°</b>'); }
     else if (a === 'speed') { G.speed = G.speed % 3 + 1; feed('Oyun hızı: <b>x' + G.speed + '</b>'); }
-    else if (a === 'unlock') { if (G.lock) { G.lock = false; feed('Kilit <b>KAPALI</b> — serbest nişan. Sağ tık / T: yeniden kilitlen.'); } }
-    else if (a === 'lock' || a === 'auto') { G.lock = a === 'lock' ? true : !G.lock; feed('Hedef kilidi: <b>' + (G.lock ? 'AÇIK' : 'KAPALI') + '</b>'); }
     else if (a === 'mute') { SFX.on = !SFX.on; feed('Ses: <b>' + (SFX.on ? 'AÇIK' : 'KAPALI') + '</b>'); }
     else if (a === 'bloom') { G.bloom = !G.bloom; feed('Işıma efekti: <b>' + (G.bloom ? 'AÇIK' : 'KAPALI') + '</b>'); }
-    if (err) feed('<span style="color:#ff9a8a">' + err + '</span>');
   }
-  // kilit açıkken: öncelikli hedefe otomatik kilitlen ve ateş et. Kilit kapalıyken: yalnızca tıklayınca, nişan alınan hedefe.
-  const range = heroRange(p);
-  p.tgt = G.lock ? mostAdvanced(p.x, p.z, range, p.edge) : null;
-  p.cd -= dt;
-  if (p.cd <= 0 && (G.lock || Input.fire)) {
-    const t = G.lock ? p.tgt : (aimTarget(p, range) || mostAdvanced(p.x, p.z, range, p.edge));
-    if (t) { fireHero(p, t); p.cd = 1 / (CORES[p.build.core].rate * p.stats.rate); }
-  }
+  p.tgt = mostAdvanced(p.x, p.z, heroRange(p), p.edge);
+  if (p.ult >= CFG.ult.need) { let n = 0; const r2 = (CFG.ult.radius * 0.85) ** 2; for (const c of G.creeps) if (c.active && c.lane === p.edge && (c.x - p.x) ** 2 + (c.z - p.z) ** 2 < r2) n += c.type === 'boss' ? 4 : 1; if (n >= 4) castUlt(p); }
+  if ((p.cd -= dt) <= 0 && p.tgt) { fireHero(p, p.tgt); p.cd = 1 / (CORES[p.build.core].rate * p.stats.rate); }
+  if (p.faceT <= 0) p.faceYaw = laneAng(p.edge);
 }
 function updateHeroCommon(p, dt) {
   if (p.faceT > 0) p.faceT -= dt;
@@ -1142,7 +1121,7 @@ const UI = {
     let h = '<h4>SAVUNUCULAR · öldürme · çekirdek</h4>';
     for (const o of G.players) h += '<div class="row' + (o === p ? ' me' : '') + '"' + (o.alive ? '' : ' style="opacity:.4"') + '><span>' + ELEMENTS[o.el].icon + '</span><span>' + o.name + '</span><span>' + o.kills + '</span><span class="pb"><i style="width:' + (o.core / CFG.core.hp * 100) + '%"></i></span><span class="lk">' + (o.alive ? Math.ceil(o.core) : '✖') + '</span></div>';
     $('board').innerHTML = h;
-    $('info').innerHTML = 'Hız <b>x' + G.speed + '</b> [G] · Krit <b>%' + Math.round(p.stats.crit * 100) + '</b> · Kilit [T] ' + (G.lock ? 'açık' : 'kapalı') + ' · En iyi seri <b>x' + FEEL.best + '</b>';
+    $('info').innerHTML = 'Hız <b>x' + G.speed + '</b> [G] · Krit <b>%' + Math.round(p.stats.crit * 100) + '</b> · En iyi seri <b>x' + FEEL.best + '</b>';
     this.drawMini();
   },
   frame(dt) {
@@ -1157,7 +1136,7 @@ const UI = {
     const W = innerWidth, H = innerHeight, cr = $('cross'), hm = $('hm'), tg = G.lock && p.tgt && p.tgt.active ? p.tgt : null;
     let cxp = '50%', cyp = '50%';
     if (tg) { _v.set(tg.x, tg.by, tg.z).project(camera); if (_v.z < 1 && _v.z > -1) { cxp = ((_v.x * 0.5 + 0.5) * W | 0) + 'px'; cyp = ((-_v.y * 0.5 + 0.5) * H | 0) + 'px'; } }
-    cr.style.left = hm.style.left = cxp; cr.style.top = hm.style.top = cyp; cr.className = tg ? 'locked' : '';
+    cr.style.left = hm.style.left = cxp; cr.style.top = hm.style.top = cyp; cr.className = tg ? 'locked' : ''; cr.style.display = tg ? 'block' : 'none';
     for (let i = this.pops.length - 1; i >= 0; i--) {
       const o = this.pops[i]; o.t += dt;
       if (o.t >= o.life) { o.el.style.display = 'none'; this.popPool.put(o); this.pops[i] = this.pops[this.pops.length - 1]; this.pops.pop(); continue; }
@@ -1264,7 +1243,7 @@ function renderDraft() {
   $('reBtn').onclick = () => { if (G.rerolls <= 0) return; G.rerolls--; draftCards = genCards(hp, n); SFX.pick(); renderDraft(); };
 }
 function pickCard(i) { if (G.state !== 'draft' || !draftCards || !draftCards[i]) return; applyCard(G.human, draftCards[i]); draftCards = null; SFX.pick(); closeDraft(); }
-function closeDraft() { hideOverlay(); UI.slots(); lockPointer(); startRound(G.round + 1); }
+function closeDraft() { hideOverlay(); UI.slots(); startRound(G.round + 1); }
 function showOverlay(html) { $('ovBox').innerHTML = html; $('overlay').classList.remove('hide'); }
 function hideOverlay() { $('overlay').classList.add('hide'); }
 
@@ -1333,13 +1312,12 @@ function init() {
   buildArena(); initPost(); UI.init(); UI.slots(); DesktopSource.init(); resize();
   const me = ELEMENTS[G.human.el];
   showOverlay('<h1>ALTIGEN REZONANS</h1><p>İstasyonun gövdesi yarıldı; koridorun ucunda bir kara delik açık. Sen bu beton koridorun bekçisisin ve bu ucundaki <b>geçidi koruyorsun</b>: mühür kristaline ulaşan her yaratık canını azaltır, mührü düşen elenir. 20 tur dayan.<br>' +
-    'Elementin: <b style="color:' + hex(me.color) + '">' + me.icon + ' ' + me.name + '</b> — ' + me.tdesc + '. Tur aralarında kart seçerek kendi build\'ini kur.</p>' +
-    '<div class="keys"><div><b>WASD</b> hareket (geçidin önündeki alanda)</div><div><b>Fare</b> bakış · <b>Shift</b> sprint</div>' +
-    '<div><b>Kilit</b>: nişangâh hedefe kendi kilitlenir · <b>Sol tık</b> kilitten çık, serbest nişan · <b>Sağ tık / T</b> yeniden kilitlen</div><div><b>Sağ alt</b>: şerit radarı (halka = menzilin)</div>' +
-    '<div><b>F</b> Ult — öldürdükçe ve seri yaptıkça dolar</div><div><b>Tab</b> panelleri aç / kapat · <b>H</b> arayüzü gizle</div><div><b>G</b> oyun hızı · <b>[ ]</b> görüş açısı · <b>M</b> ses · <b>B</b> ışıma</div>' +
-    '<div><b>Kritik</b>: büyük sayı, x2 hasar</div><div><b>Rezonans</b> kartı: 2. element → kombo patlamaları</div></div>' +
+    'Elementin: <b style="color:' + hex(me.color) + '">' + me.icon + ' ' + me.name + '</b> — ' + me.tdesc + '. Kamera sabit; savaşı izle, build\'i sen yönet.</p>' +
+    '<div class="keys"><div><b>Otomatik</b>: karakter ortada durur, hedefini seçer, ateş eder ve ultisini kendi kullanır</div><div><b>Sen</b>: tur aralarında kart seçerek build\'i kurarsın (tıkla ya da 1–4)</div>' +
+    '<div><b>G</b> oyun hızı x1 / x2 / x3</div><div><b>Tab</b> panelleri aç / kapat · <b>H</b> arayüzü gizle</div>' +
+    '<div><b>[ ]</b> görüş açısı</div><div><b>M</b> ses · <b>B</b> ışıma</div></div>' +
     '<button class="go" id="goBtn">BAŞLA</button>');
-  $('goBtn').onclick = () => { SFX.init(); hideOverlay(); lockPointer(); startRound(1); };
+  $('goBtn').onclick = () => { SFX.init(); hideOverlay(); startRound(1); };
   if (AUTO) { hideOverlay(); startRound(1); }
   requestAnimationFrame(loop);
 }
