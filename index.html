@@ -128,8 +128,8 @@
 
 /* ============================ 1. CONFIG / DATA ============================ */
 const CFG = {
-  arena:   { coreAl: 40, spawnAl: 110, postAl: 56, laneHalfW: 13, coreR: 4 },   // şerit-yerel: al = merkezden uzaklık, la = yanal
-  zone:    { aMin: 47, aMax: 76, lat: 11 },                 // oyuncunun sabit hareket alanı
+  arena:   { coreAl: 40, spawnAl: 110, postAl: 56, laneHalfW: 10, coreR: 3.5 },   // şerit-yerel: al = merkezden uzaklık, la = yanal
+  zone:    { aMin: 47, aMax: 76, lat: 8.5 },                 // oyuncunun sabit hareket alanı
   core:    { hp: 30 },                                       // herkesin KENDİ çekirdeği
   rounds:  10, bossRounds: [5, 10], prepTime: 6,
   player:  { walk: 8, sprint: 13, stamina: 100, staminaDrain: 22, staminaRegen: 16 },
@@ -270,7 +270,7 @@ function initPost() {
     let rt; if (renderer.capabilities.isWebGL2 && THREE.WebGLMultisampleRenderTarget) rt = new THREE.WebGLMultisampleRenderTarget(innerWidth, innerHeight, { format: THREE.RGBAFormat });
     composer = new THREE.EffectComposer(renderer, rt);
     composer.addPass(new THREE.RenderPass(scene, camera));
-    bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.75, 0.55, 0.62);
+    bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.7, 0.5, 0.72);
     composer.addPass(bloomPass);
   } catch (e) { composer = null; }
 }
@@ -303,21 +303,23 @@ function makeLabel(text, color) {
 }
 
 /* --------------------------------- arena --------------------------------- */
-const LANES = []; let motes, voidStar;
-function groundTexture() {
-  const S = 1024, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d');
-  g.fillStyle = '#1a2036'; g.fillRect(0, 0, S, S);
-  g.strokeStyle = 'rgba(110,160,255,0.16)'; g.lineWidth = 3;
-  const r = 64, h = r * Math.sqrt(3);
-  for (let row = -1; row * h / 2 < S + h; row++) for (let col = -1; col * r * 3 < S + r * 3; col++) {
-    const cx = col * r * 3 + (row & 1 ? r * 1.5 : 0), cy = row * h / 2;
-    g.beginPath(); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; g[k ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * r, cy + Math.sin(a) * r); } g.closePath(); g.stroke();
+const LANES = []; let motes, voidStar, portalMat;
+function metalTexture() {               // prosedürel çelik güverte: plakalar, perçinler, kenarda uyarı şeridi
+  const S = 512, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d');
+  g.fillStyle = '#232834'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 2600; i++) { const v = rand(-14, 14) | 0; g.fillStyle = 'rgba(' + (120 + v) + ',' + (130 + v) + ',' + (150 + v) + ',' + rand(0.03, 0.1) + ')'; g.fillRect(Math.random() * S, Math.random() * S, rand(6, 60), 1); }
+  const n = 4, c = S / n;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const x = i * c, y = j * c; g.fillStyle = 'rgba(255,255,255,' + rand(0, 0.05) + ')'; g.fillRect(x, y, c, c);
+    g.strokeStyle = 'rgba(8,10,16,0.9)'; g.lineWidth = 4; g.strokeRect(x + 2, y + 2, c - 4, c - 4);
+    g.strokeStyle = 'rgba(190,205,235,0.22)'; g.lineWidth = 1.5; g.strokeRect(x + 6, y + 6, c - 12, c - 12);
+    g.fillStyle = '#5d6678'; for (const q of [[14, 14], [c - 14, 14], [14, c - 14], [c - 14, c - 14]]) { g.beginPath(); g.arc(x + q[0], y + q[1], 3.2, 0, TAU); g.fill(); }
   }
-  for (let i = 0; i < 900; i++) { g.fillStyle = 'rgba(160,190,255,' + rand(0.02, 0.1) + ')'; g.fillRect(Math.random() * S, Math.random() * S, 2, 2); }
-  const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 40, 1 / 40); return t;
+  for (const x0 of [0, S - 30]) { g.save(); g.beginPath(); g.rect(x0, 0, 30, S); g.clip(); g.fillStyle = '#15171d'; g.fillRect(x0, 0, 30, S); g.strokeStyle = '#a87c12'; g.lineWidth = 13; for (let y = -40; y < S + 40; y += 42) { g.beginPath(); g.moveTo(x0 - 6, y + 36); g.lineTo(x0 + 36, y); g.stroke(); } g.restore(); }
+  const t = new THREE.CanvasTexture(cv); t.anisotropy = 8; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
 }
-/* Harita: ortak alan yok. Altı ayrı yüzen ada; her adada uzak uçta doğuş kapısı, yakın uçta sahibinin çekirdeği,
-   çekirdeğin önünde savunucunun sabit alanı. Komşu adalar yalnızca manzara. */
+/* Sahne: boşluğun üzerinde altı ayrı metal köprü. Her köprünün karşı ucunda açılmış bir portal, bu ucunda
+   savunucunun koruduğu geçit (kapı + mühür kristali). Komşu köprüler yalnızca manzara. */
 function buildArena() {
   const A = CFG.arena, Z = CFG.zone;
   const sky = new THREE.Mesh(new THREE.SphereGeometry(500, 24, 12), new THREE.ShaderMaterial({
@@ -332,36 +334,64 @@ function buildArena() {
   for (let i = 0; i < 30; i++) { const a = i / 30 * TAU + rand(-0.05, 0.05), d = rand(190, 300), hh = rand(25, 80); const m = new THREE.Mesh(new THREE.ConeGeometry(rand(14, 30), hh, 5), rockM); m.position.set(Math.sin(a) * d, hh / 2 - 40, Math.cos(a) * d); m.rotation.y = rand(0, 3); scene.add(m); }
   voidStar = new THREE.Mesh(new THREE.IcosahedronGeometry(10, 1), glow(0x8a4aff, 0.55)); voidStar.position.y = -16; scene.add(voidStar);
   const vl = new THREE.PointLight(0x8a4aff, 1.1, 170); vl.position.y = -4; scene.add(vl);
-  const topM = new THREE.MeshPhongMaterial({ map: groundTexture(), shininess: 40, specular: 0x223355 }), sideM = mat(0x141829), pilM = mat(0x252c44);
-  const a0 = A.coreAl - 8, a1 = A.spawnAl + 8, w0 = A.laneHalfW, w1 = A.laneHalfW + 4, wAt = al => w0 + (w1 - w0) * (al - a0) / (a1 - a0);
+  const a0 = A.coreAl - 9, a1 = A.spawnAl + 6, len = a1 - a0, mid = (a0 + a1) / 2, hw = A.laneHalfW + 1.5;
+  const tex = metalTexture(); tex.repeat.set(1, Math.round(len / (hw * 2)));
+  const deckM = new THREE.MeshPhongMaterial({ map: tex, shininess: 28, specular: 0x222a3a }), steel = mat(0x3a4152), dark = mat(0x1c2030);
+  steel.shininess = dark.shininess = 70; steel.specular.setHex(0x66779a);
+  portalMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 } }, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
+    vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+    fragmentShader: 'uniform float uTime;varying vec2 vUv;void main(){vec2 p=vUv-0.5;float r=length(p)*2.0;float a=atan(p.y,p.x);float s=sin(a*3.0+r*10.0-uTime*3.0)*0.5+0.5;float s2=sin(a*5.0-r*6.0+uTime*1.7)*0.5+0.5;float m=smoothstep(1.0,0.8,r);vec3 c=mix(vec3(0.25,0.04,0.55),vec3(1.0,0.22,0.6),s)*(0.35+0.8*s*s2);c+=vec3(1.0,0.75,1.0)*smoothstep(0.35,0.0,r)*0.9;gl_FragColor=vec4(c*m,m);}' });
+  const box = (g, w, h, d, x, y, z, m, sh) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); if (sh) b.castShadow = true; g.add(b); return b; };
   for (let i = 0; i < 6; i++) {
     const p = G.players[i], col = ELEMENTS[p.el].color, me = i === 0, g = new THREE.Group(); g.rotation.y = laneAng(i); scene.add(g);   // grup-yerel: x = la, z = al
-    const sh = new THREE.Shape(); sh.moveTo(-w0, a0); sh.lineTo(w0, a0); sh.lineTo(w1, a1); sh.lineTo(-w1, a1); sh.closePath();
-    const isl = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 5, bevelEnabled: false }), [topM, sideM]); isl.rotation.x = Math.PI / 2; isl.receiveShadow = true; g.add(isl);
-    for (const q of [[0, 58, 15, 34], [-4, 92, 13, 26], [5, 78, 9, 44]]) { const rk = new THREE.Mesh(new THREE.ConeGeometry(q[2], q[3], 6), sideM); rk.rotation.x = Math.PI; rk.position.set(q[0], -5 - q[3] / 2, q[1]); g.add(rk); }
-    const sg2 = new THREE.BufferGeometry(); sg2.setAttribute('position', new THREE.Float32BufferAttribute([-3, 0.04, A.coreAl, 3, 0.04, A.coreAl, w1 - 3, 0.04, A.spawnAl, -3, 0.04, A.coreAl, w1 - 3, 0.04, A.spawnAl, 3 - w1, 0.04, A.spawnAl], 3));
-    g.add(new THREE.Mesh(sg2, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.09, side: THREE.DoubleSide, depthWrite: false })));
-    for (const s of [-1, 1]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, a1 - a0), new THREE.MeshBasicMaterial({ color: col })); r.position.set(s * (w0 + w1) / 2, 0.15, (a0 + a1) / 2); r.rotation.y = s * Math.atan2(w1 - w0, a1 - a0); g.add(r); }
-    for (let al = A.spawnAl - 4; al > Z.aMax + 4; al -= 8) { const st = new THREE.Mesh(new THREE.BoxGeometry(wAt(al) * 1.7, 0.05, 0.22), glow(col, 0.22)); st.position.set(0, 0.05, al); g.add(st); }
-    const zg = new THREE.BufferGeometry().setFromPoints([[-Z.lat, Z.aMin], [Z.lat, Z.aMin], [Z.lat, Z.aMax], [-Z.lat, Z.aMax]].map(q => new THREE.Vector3(q[0], 0.08, q[1])));
-    g.add(new THREE.LineLoop(zg, new THREE.LineBasicMaterial({ color: me ? 0xffffff : col, transparent: true, opacity: me ? 0.85 : 0.3 })));
-    for (const al of [a0 + 1.5, 62, 86, a1 - 1.5]) for (const s of [-1, 1]) {
-      const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.9, 5, 6), pilM); pil.castShadow = me; pil.position.set(s * (wAt(al) - 0.9), 2.5, al); g.add(pil);
-      const cap = new THREE.Mesh(new THREE.OctahedronGeometry(0.6), new THREE.MeshBasicMaterial({ color: col })); cap.position.set(pil.position.x, 5.9, al); g.add(cap);
+    const lit = new THREE.MeshBasicMaterial({ color: col });
+    // güverte + alt taşıyıcılar
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(hw * 2, 1.2, len), [dark, dark, deckM, dark, dark, dark]); deck.position.set(0, -0.6, mid); deck.receiveShadow = true; g.add(deck);
+    for (const s of [-1, 1]) { box(g, 1.2, 2.6, len, s * (hw - 2.5), -2.5, mid, steel); box(g, 0.35, 0.3, len, s * (hw - 0.2), 0.16, mid, lit); }
+    for (let al = a0 + 4; al < a1; al += 9) { box(g, hw * 2 - 3, 0.8, 0.8, 0, -3.2, al, dark); const br = box(g, 0.5, 0.5, 12, 0, -2.4, al + 4.5, dark); br.rotation.y = 0.9; }
+    // korkuluklar
+    const step = me ? 5 : 10;
+    for (const s of [-1, 1]) {
+      for (let al = a0 + 1; al <= a1 - 1; al += step) box(g, 0.3, 2.4, 0.3, s * (hw - 0.4), 1.2, al, steel, me);
+      box(g, 0.22, 0.22, len, s * (hw - 0.4), 2.4, mid, steel, me); box(g, 0.14, 0.14, len, s * (hw - 0.4), 1.3, mid, steel);
     }
-    const portal = new THREE.Group(); portal.position.set(0, 0, A.spawnAl + 3); g.add(portal);
-    portal.add(new THREE.Mesh(new THREE.TorusGeometry(A.laneHalfW, 0.5, 5, 22, Math.PI), new THREE.MeshBasicMaterial({ color: 0xff3a8a })));
-    portal.add(new THREE.Mesh(new THREE.CircleGeometry(A.laneHalfW, 22, 0, Math.PI), glow(0x8a2aff, 0.16)));
-    if (!me) { const lab = makeLabel(ELEMENTS[p.el].icon + ' ' + p.name, hex(col)); lab.scale.set(18, 4.5, 1); lab.position.set(0, 19, A.spawnAl); g.add(lab); }
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(A.coreR, A.coreR + 1.5, 1.6, 6), pilM); base.position.set(0, 0.8, A.coreAl); base.castShadow = me; g.add(base);
-    const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.9), mat(col, col, 0.9)); core.scale.y = 1.6; core.position.set(0, 5.2, A.coreAl); g.add(core);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.08, 4, 28), new THREE.MeshBasicMaterial({ color: col })); ring.position.copy(core.position); g.add(ring);
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 1.2, 90, 8, 1, true), glow(col, 0.13)); beam.position.set(0, 48, A.coreAl); g.add(beam);
-    let light = null; if (me) { light = new THREE.PointLight(col, 1.5, 60); light.position.set(0, 7, A.coreAl); g.add(light); }
-    LANES.push({ core, ring, beam, light, col, flash: 0, cx: p.dir[0] * A.coreAl, cz: p.dir[1] * A.coreAl });
+    // asma kuleleri + halatlar
+    for (const tz of [a0 + len * 0.3, a0 + len * 0.68]) {
+      for (const s of [-1, 1]) {
+        box(g, 1.6, 30, 1.6, s * (hw + 0.6), 12, tz, steel, me); box(g, 2.2, 1.2, 2.2, s * (hw + 0.6), 27.6, tz, dark);
+        const lamp = new THREE.Mesh(new THREE.OctahedronGeometry(0.7), lit); lamp.position.set(s * (hw + 0.6), 29.2, tz); g.add(lamp);
+        const pts = []; for (let k = -3; k <= 3; k++) { if (!k) continue; pts.push(new THREE.Vector3(s * (hw + 0.6), 27, tz), new THREE.Vector3(s * (hw - 0.4), 2.4, tz + k * 6.5)); }
+        g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x8a96b0, transparent: true, opacity: 0.7 })));
+      }
+      box(g, hw * 2 + 3, 1.4, 1.2, 0, 24, tz, steel, me); box(g, hw * 2 + 3, 0.5, 0.5, 0, 20, tz, dark);
+    }
+    // savunucunun alanı: güverteye boyanmış çizgi
+    const zg = new THREE.BufferGeometry().setFromPoints([[-Z.lat, Z.aMin], [Z.lat, Z.aMin], [Z.lat, Z.aMax], [-Z.lat, Z.aMax]].map(q => new THREE.Vector3(q[0], 0.06, q[1])));
+    g.add(new THREE.LineLoop(zg, new THREE.LineBasicMaterial({ color: me ? 0xffffff : col, transparent: true, opacity: me ? 0.7 : 0.25 })));
+    for (let al = A.spawnAl - 6; al > Z.aMax + 4; al -= 8) { const st = new THREE.Mesh(new THREE.BoxGeometry(A.laneHalfW * 1.7, 0.04, 0.2), glow(col, 0.2)); st.position.set(0, 0.05, al); g.add(st); }
+    // karşıda açılmış portal
+    const PR = A.laneHalfW + 2.5, portal = new THREE.Group(); portal.position.set(0, PR - 2.5, A.spawnAl + 3); g.add(portal);
+    portal.add(new THREE.Mesh(new THREE.CircleGeometry(PR, 40), portalMat));
+    portal.add(new THREE.Mesh(new THREE.TorusGeometry(PR, 0.7, 6, 40), new THREE.MeshBasicMaterial({ color: 0xff3a8a })));
+    const pr1 = new THREE.Mesh(new THREE.TorusGeometry(PR + 1.8, 0.22, 4, 40, Math.PI * 1.3), new THREE.MeshBasicMaterial({ color: 0xb06aff })); portal.add(pr1);
+    const pr2 = new THREE.Mesh(new THREE.TorusGeometry(PR + 3.2, 0.14, 4, 40, Math.PI * 0.8), new THREE.MeshBasicMaterial({ color: 0xff8ad0 })); portal.add(pr2);
+    for (const s of [-1, 1]) box(g, 2.2, 7, 2.2, s * (PR + 0.5), 2.5, A.spawnAl + 3, dark, me);
+    if (me) { const plt = new THREE.PointLight(0xff3a9a, 1.6, 75); plt.position.set(0, 9, A.spawnAl - 3); g.add(plt); }
+    if (!me) { const lab = makeLabel(ELEMENTS[p.el].icon + ' ' + p.name, hex(col)); lab.scale.set(18, 4.5, 1); lab.position.set(0, PR * 2 + 4, A.spawnAl); g.add(lab); }
+    // korunan geçit: çelik kapı + mühür kristali
+    for (const s of [-1, 1]) { box(g, 2.4, 14, 2.4, s * (hw - 0.6), 7, a0 + 2, steel, me); box(g, 0.5, 12, 0.5, s * (hw - 2.2), 6, a0 + 2.2, lit); }
+    box(g, hw * 2 + 1.2, 2.4, 2.8, 0, 14.6, a0 + 2, steel, me); box(g, hw * 2 - 4, 0.4, 0.4, 0, 13.2, a0 + 3.5, lit);
+    const veil = new THREE.Mesh(new THREE.PlaneGeometry(hw * 2 - 3.6, 13), glow(col, 0.12)); veil.position.set(0, 6.7, a0 + 2); g.add(veil);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(A.coreR, A.coreR + 1.3, 1.4, 6), steel); base.position.set(0, 0.7, A.coreAl); base.castShadow = me; g.add(base);
+    const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.7), mat(col, col, 0.9)); core.scale.y = 1.6; core.position.set(0, 4.8, A.coreAl); g.add(core);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(2.9, 0.08, 4, 28), lit); ring.position.copy(core.position); g.add(ring);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.8, 8, 8, 1, true), glow(col, 0.2)); beam.position.set(0, 9.5, A.coreAl); g.add(beam);
+    let light = null; if (me) { light = new THREE.PointLight(col, 0.9, 45); light.position.set(0, 9, A.coreAl); g.add(light); }
+    LANES.push({ core, ring, beam, veil, pr1, pr2, light, col, flash: 0, cx: p.dir[0] * A.coreAl, cz: p.dir[1] * A.coreAl });
   }
   // gölge yalnızca oyuncunun adasını kapsar
-  const d = G.human.dir, mid = (A.coreAl + A.spawnAl) / 2;
+  const d = G.human.dir;
   sun.target.position.set(d[0] * mid, 0, d[1] * mid); scene.add(sun.target); sun.position.set(d[0] * mid + 45, 90, d[1] * mid + 30);
   Object.assign(sun.shadow.camera, { left: -52, right: 52, top: 52, bottom: -52, near: 10, far: 220 }); sun.shadow.camera.updateProjectionMatrix();
   const mp = []; for (let i = 0; i < 320; i++) { const al = rand(30, 122), la = rand(-26, 26); mp.push(d[0] * al + d[1] * la, rand(0.5, 24), d[1] * al - d[0] * la); }
@@ -781,7 +811,7 @@ function leak(c) {
 /* Çekirdeği düşen savunucu elenir: adası söner, dalgası durur. İnsan oyuncuysa oyun biter. */
 function eliminate(p) {
   if (!p.alive) return; p.alive = false; p.outRound = G.round;
-  const L = LANES[p.edge]; L.core.visible = L.ring.visible = L.beam.visible = false; if (L.light) L.light.intensity = 0;
+  const L = LANES[p.edge]; L.core.visible = L.ring.visible = L.beam.visible = L.veil.visible = false; if (L.light) L.light.intensity = 0;
   spawnDebris(L.cx, 5, L.cz, 40, 16, 0, 2); spawnFx(L.cx, 5, L.cz, 16, 0xff3030, 0.8); spawnRing(L.cx, L.cz, 22, 0xff3030, 0.9);
   if (p === G.human) return;
   p.mesh.visible = false; for (const c of G.creeps) if (c.lane === p.edge) removeCreep(c);
@@ -926,13 +956,14 @@ function updateScenery(dt) {
   const t = G.time;
   for (let i = 0; i < 6; i++) {
     const L = LANES[i], p = G.players[i]; if (!p.alive) continue;
-    L.core.rotation.y += dt * 0.8; L.core.position.y = 5.2 + Math.sin(t * 1.5 + i) * 0.3; L.ring.rotation.x += dt * 1.1; L.ring.rotation.y += dt * 0.6;
+    L.pr1.rotation.z += dt * 0.7; L.pr2.rotation.z -= dt * 0.45;
+    L.core.rotation.y += dt * 0.8; L.core.position.y = 4.8 + Math.sin(t * 1.5 + i) * 0.3; L.ring.rotation.x += dt * 1.1; L.ring.rotation.y += dt * 0.6;
     if (L.flash > 0) L.flash -= dt;
     const col = L.flash > 0 || (p.core / CFG.core.hp < 0.35 && Math.sin(t * 8) > 0) ? 0xff3a3a : L.col;
     L.core.material.emissive.setHex(col); L.core.material.color.setHex(col); L.beam.material.color.setHex(col);
-    if (L.light) { L.light.color.setHex(col); L.light.intensity = 1.5 + Math.sin(t * 3) * 0.3 + (L.flash > 0 ? 2 : 0); }
+    if (L.light) { L.light.color.setHex(col); L.light.intensity = 0.9 + Math.sin(t * 3) * 0.2 + (L.flash > 0 ? 1.5 : 0); }
   }
-  motes.position.y = Math.sin(t * 0.3) * 1.5; voidStar.rotation.y += dt * 0.1; voidStar.scale.setScalar(1 + Math.sin(t * 0.8) * 0.06);
+  portalMat.uniforms.uTime.value = t; motes.position.y = Math.sin(t * 0.3) * 1.5; voidStar.rotation.y += dt * 0.1; voidStar.scale.setScalar(1 + Math.sin(t * 0.8) * 0.06);
 }
 
 /* ================================ 8. UI / HUD ============================== */
@@ -985,7 +1016,7 @@ const UI = {
     const g = this.mini, W = 170, H = 170, A = CFG.arena, p = G.human, d = p.dir, a0 = A.coreAl - 5, a1 = A.spawnAl + 6, sc = (H - 14) / (a1 - a0);
     const X = la => W / 2 + la * sc, Y = al => H - 7 - (al - a0) * sc, col = hex(ELEMENTS[p.el].color);
     g.clearRect(0, 0, W, H);
-    g.beginPath(); g.moveTo(X(-A.laneHalfW), Y(a0)); g.lineTo(X(A.laneHalfW), Y(a0)); g.lineTo(X(A.laneHalfW + 4), Y(a1)); g.lineTo(X(-A.laneHalfW - 4), Y(a1)); g.closePath();
+    g.beginPath(); g.moveTo(X(-A.laneHalfW), Y(a0)); g.lineTo(X(A.laneHalfW), Y(a0)); g.lineTo(X(A.laneHalfW), Y(a1)); g.lineTo(X(-A.laneHalfW), Y(a1)); g.closePath();
     g.fillStyle = 'rgba(120,150,255,.09)'; g.fill(); g.strokeStyle = col; g.lineWidth = 1.5; g.stroke();
     g.strokeStyle = '#ff3a8a'; g.lineWidth = 3; g.beginPath(); g.moveTo(X(-A.laneHalfW), Y(A.spawnAl + 3)); g.lineTo(X(A.laneHalfW), Y(A.spawnAl + 3)); g.stroke();
     const pal = p.x * d[0] + p.z * d[1], pla = p.x * d[1] - p.z * d[0];
@@ -1110,9 +1141,9 @@ function init() {
   G.human = G.players[0]; Cam.yaw = laneAng(0);
   buildArena(); initPost(); UI.init(); UI.slots(); DesktopSource.init(); resize();
   const me = ELEMENTS[G.human.el];
-  showOverlay('<h1>ALTIGEN REZONANS</h1><p>Altı savunucu, altı ayrı ada. Herkes <b>yalnızca kendi çekirdeğini</b> savunur; çekirdeğine ulaşan her yaratık canını azaltır, çekirdeği düşen elenir.<br>' +
+  showOverlay('<h1>ALTIGEN REZONANS</h1><p>Karşıda bir portal açıldı. Metal köprünün bu ucundaki <b>geçidi sen koruyorsun</b>: mühür kristaline ulaşan her yaratık canını azaltır, mührü düşen elenir. Diğer beş savunucu kendi köprüsünde.<br>' +
     'Elementin: <b style="color:' + hex(me.color) + '">' + me.icon + ' ' + me.name + '</b> — ' + me.tdesc + '. Tur aralarında kart seçerek kendi build\'ini kur.</p>' +
-    '<div class="keys"><div><b>WASD</b> hareket (beyaz çerçeveli alanın içinde)</div><div><b>Fare</b> bakış · <b>Shift</b> sprint</div>' +
+    '<div class="keys"><div><b>WASD</b> hareket (köprüdeki beyaz çizginin içinde)</div><div><b>Fare</b> bakış · <b>Shift</b> sprint</div>' +
     '<div><b>Sol tık</b> nişanlı ateş · <b>T</b> oto ateş aç/kapa</div><div><b>Sağ alt</b>: şerit radarı (halka = menzilin)</div>' +
     '<div><b>F</b> Ult — öldürdükçe ve seri yaptıkça dolar</div><div><b>M</b> ses · <b>B</b> ışıma efekti</div>' +
     '<div><b>Kritik</b>: sarı sayı, x2 hasar</div><div><b>Rezonans</b> kartı: 2. element → kombo patlamaları</div></div>' +
