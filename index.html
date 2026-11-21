@@ -23,8 +23,8 @@
   #board .row{display:grid;grid-template-columns:22px 52px 44px 1fr 34px;align-items:center;gap:5px;margin:3px 0;font-size:12px;font-variant-numeric:tabular-nums}
   #board .row.me{color:#ffd76a;font-weight:700}
   #board .pb{height:7px;background:#161c2b;border-radius:4px;overflow:hidden}
-  #board .pb i{display:block;height:100%;background:#ff5a4a}
-  #board .lk{text-align:right;color:#ff8a7a}
+  #board .pb i{display:block;height:100%;background:#39d0ff}
+  #board .lk{text-align:right}
   #mini{position:absolute;right:10px;bottom:10px;border-radius:8px;background:rgba(9,12,22,.7);border:1px solid rgba(140,170,255,.16)}
   #bottom{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:stretch}
   .slot{min-width:108px;text-align:center}
@@ -121,25 +121,25 @@
 'use strict';
 /* ============================================================================
    ALTIGEN REZONANS — tek dosyalık alan savunması prototipi (1 oyuncu + 5 bot)
-   Herkes KENDİ alanında kalır ve kendi dalgasını durdurur; derinlik bireysel build'de.
+   Herkesin kendi adası ve kendi çekirdeği var: kimse alanından çıkmaz, herkes kendini savunur.
    Bölümler: 1 Config/Data · 2 Wave Generator · 3 Graphics+Entities (pool) · 4 Feel+SFX
              5 Combat+Combo · 6 Bot AI · 7 Camera/Input · 8 UI/HUD · 9 Game loop
    ========================================================================== */
 
 /* ============================ 1. CONFIG / DATA ============================ */
 const CFG = {
-  arena:   { R: 70, coreR: 5, spawnR: 66, postR: 28, laneHalfW: 12 },
-  zone:    { aMin: 15, aMax: 42, lat: 12 },                 // oyuncunun sabit hareket alanı (şerit-yerel koordinat)
-  core:    { hp: 100 },
+  arena:   { coreAl: 40, spawnAl: 110, postAl: 56, laneHalfW: 13, coreR: 4 },   // şerit-yerel: al = merkezden uzaklık, la = yanal
+  zone:    { aMin: 47, aMax: 76, lat: 11 },                 // oyuncunun sabit hareket alanı
+  core:    { hp: 30 },                                       // herkesin KENDİ çekirdeği
   rounds:  10, bossRounds: [5, 10], prepTime: 6,
-  player:  { walk: 8, sprint: 13, stamina: 100, staminaDrain: 22, staminaRegen: 16, towers: 2, towerMinR: 9, towerMaxR: 56 },
+  player:  { walk: 8, sprint: 13, stamina: 100, staminaDrain: 22, staminaRegen: 16 },
   crit:    { chance: 0.12, mult: 2.0 },
   combo:   { window: 2.0, icd: 0.9, splash: 0.7, echoLvl: 0.25 },
   ult:     { need: 100, perKill: 3, streakBonus: 0.03, streakCap: 20, radius: 17, dmg: 170, kb: 7 },
-  wave:    { baseCount: 8, countPer: 3, baseHp: 45, hpGrowth: 1.25, spawnWindow: 24, speed: 3.2 },
+  wave:    { baseCount: 8, countPer: 3, baseHp: 42, hpGrowth: 1.22, spawnWindow: 24, speed: 3.2 },
   flawless:{ dmgPerChain: 0.08, maxChain: 5, extraCards: 1 },
   bot:     { dmgBonus: 1.35, wander: 6 },
-  tower:   { dmg: 9, rate: 1.4, range: 20, speed: 60, turn: 5, kb: 0.4 },
+
   feel:    { streakWindow: 2.6, shakeMax: 0.9, shakeDecay: 2.2, hitstopScale: 0.05, kickDecay: 9,
              trauma: { shot: 0.035, crit: 0.14, kill: 0.1, combo: 0.26, ult: 0.9, leak: 0.7, boss: 1 } },
   pools:   { creeps: 320, proj: 380, fx: 110, rings: 48, beams: 72, debris: 220, popups: 44 },
@@ -200,7 +200,7 @@ const PASSIVES = {
   sharp:     { name: 'Keskin Göz',  crit: 0.1, desc: 'Kritik şansı +%10 / sv.' },
   brutal:    { name: 'Vahşet',      critMult: 0.6, desc: 'Kritik hasarı +%60 / sv.' },
   charger:   { name: 'Şarj',        ult: 0.5, desc: 'Ult dolumu +%50 / sv.' },
-  engineer:  { name: 'Mühendis',    towers: 1, towerDmg: 0.25, desc: '+1 kule ve kule hasarı +%25 / sv.' },
+  mender:    { name: 'Onarıcı',     mend: 3, desc: 'Her tur sonunda çekirdeğin +3 can / sv.' },
   resonator: { name: 'Rezonatör',   combo: 0.35, desc: 'Kombo hasarı +%35 / sv.' },
   impact:    { name: 'Darbe',       kb: 0.6, desc: 'Geri itme +%60 / sv.' },
 };
@@ -227,8 +227,8 @@ const AUTO = QS.has('auto');              // ?auto → insan oyuncuyu da bot oyn
 
 const G = {
   state: 'menu', round: 0, time: 0, stateT: 0, waveT: 0,
-  coreHp: CFG.core.hp, chain: 0, roundLeaks: [0, 0, 0, 0, 0, 0], extraCard: false,
-  players: [], human: null, towers: [], creeps: [], projs: [], fxs: [], rings: [], beams: [], debris: [],
+  roundLeaks: [0, 0, 0, 0, 0, 0], extraCard: false,
+  players: [], human: null, creeps: [], projs: [], fxs: [], rings: [], beams: [], debris: [],
   spawnQ: [], pressure: [0, 0, 0, 0, 0, 0], autoFire: true, bloom: true, roundHp: 30,
   stats: { combos: 0, flawless: 0, leaks: 0 },
 };
@@ -256,7 +256,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x120e2a, 95, 260);
+scene.fog = new THREE.Fog(0x120e2a, 110, 330);
 const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 700);
 scene.add(new THREE.HemisphereLight(0x9fb8ff, 0x1a1024, 0.75));
 const sun = new THREE.DirectionalLight(0xfff0e0, 0.85); sun.position.set(50, 90, 30); sun.castShadow = true;
@@ -303,66 +303,68 @@ function makeLabel(text, color) {
 }
 
 /* --------------------------------- arena --------------------------------- */
-let coreMesh, coreRings = [], coreLight, coreBeam, motes;
+const LANES = []; let motes, voidStar;
 function groundTexture() {
   const S = 1024, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d');
-  const gr = g.createRadialGradient(S / 2, S / 2, 40, S / 2, S / 2, S / 2); gr.addColorStop(0, '#232b44'); gr.addColorStop(1, '#10141f'); g.fillStyle = gr; g.fillRect(0, 0, S, S);
-  g.strokeStyle = 'rgba(110,160,255,0.13)'; g.lineWidth = 2;
-  const r = 26, h = r * Math.sqrt(3);
+  g.fillStyle = '#1a2036'; g.fillRect(0, 0, S, S);
+  g.strokeStyle = 'rgba(110,160,255,0.16)'; g.lineWidth = 3;
+  const r = 64, h = r * Math.sqrt(3);
   for (let row = -1; row * h / 2 < S + h; row++) for (let col = -1; col * r * 3 < S + r * 3; col++) {
     const cx = col * r * 3 + (row & 1 ? r * 1.5 : 0), cy = row * h / 2;
     g.beginPath(); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; g[k ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * r, cy + Math.sin(a) * r); } g.closePath(); g.stroke();
   }
   for (let i = 0; i < 900; i++) { g.fillStyle = 'rgba(160,190,255,' + rand(0.02, 0.1) + ')'; g.fillRect(Math.random() * S, Math.random() * S, 2, 2); }
-  const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; return t;
+  const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 40, 1 / 40); return t;
 }
+/* Harita: ortak alan yok. Altı ayrı yüzen ada; her adada uzak uçta doğuş kapısı, yakın uçta sahibinin çekirdeği,
+   çekirdeğin önünde savunucunun sabit alanı. Komşu adalar yalnızca manzara. */
 function buildArena() {
   const A = CFG.arena, Z = CFG.zone;
-  // gökyüzü: gradyan kubbe + yıldızlar + ufukta siluetler
   const sky = new THREE.Mesh(new THREE.SphereGeometry(500, 24, 12), new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
     vertexShader: 'varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-    fragmentShader: 'varying vec3 vP;void main(){float h=normalize(vP).y;vec3 c=mix(vec3(0.16,0.07,0.30),vec3(0.015,0.02,0.06),smoothstep(-0.05,0.55,h));c+=vec3(0.35,0.12,0.25)*pow(1.0-abs(h),10.0);gl_FragColor=vec4(c,1.0);}' }));
+    fragmentShader: 'varying vec3 vP;void main(){float h=normalize(vP).y;vec3 c=mix(vec3(0.16,0.07,0.30),vec3(0.015,0.02,0.06),smoothstep(-0.05,0.55,h));c=mix(c,vec3(0.02,0.01,0.05),smoothstep(0.0,-0.5,h));c+=vec3(0.35,0.12,0.25)*pow(1.0-abs(h),10.0);gl_FragColor=vec4(c,1.0);}' }));
   scene.add(sky);
-  const sp = []; for (let i = 0; i < 700; i++) { const a = Math.random() * TAU, y = rand(0.05, 1), r = Math.sqrt(1 - y * y); sp.push(Math.cos(a) * r * 450, y * 450, Math.sin(a) * r * 450); }
+  const sp = []; for (let i = 0; i < 900; i++) { const a = Math.random() * TAU, y = rand(-0.4, 1), r = Math.sqrt(1 - y * y); sp.push(Math.cos(a) * r * 450, y * 450, Math.sin(a) * r * 450); }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
   scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xcfd8ff, size: 1.6, sizeAttenuation: false, fog: false })));
   const rockM = mat(0x0c0a18);
-  for (let i = 0; i < 34; i++) { const a = i / 34 * TAU + rand(-0.05, 0.05), d = rand(105, 170), hh = rand(14, 48); const m = new THREE.Mesh(new THREE.ConeGeometry(rand(10, 22), hh, 5), rockM); m.position.set(Math.sin(a) * d, hh / 2 - 6, Math.cos(a) * d); m.rotation.y = rand(0, 3); scene.add(m); }
-  const under = new THREE.Mesh(new THREE.CircleGeometry(400, 24), new THREE.MeshBasicMaterial({ color: 0x06060d })); under.rotation.x = -Math.PI / 2; under.position.y = -6; scene.add(under);
-  // zemin: prosedürel altıgen doku
-  const top = new THREE.MeshPhongMaterial({ map: groundTexture(), shininess: 40, specular: 0x223355 });
-  const ground = new THREE.Mesh(new THREE.CylinderGeometry(A.R, A.R - 3, 6, 6), [mat(0x151a2a), top, mat(0x0a0c14)]); ground.position.y = -3; ground.receiveShadow = true; scene.add(ground);
+  for (let i = 0; i < 30; i++) { const a = i / 30 * TAU + rand(-0.05, 0.05), d = rand(190, 300), hh = rand(25, 80); const m = new THREE.Mesh(new THREE.ConeGeometry(rand(14, 30), hh, 5), rockM); m.position.set(Math.sin(a) * d, hh / 2 - 40, Math.cos(a) * d); m.rotation.y = rand(0, 3); scene.add(m); }
+  voidStar = new THREE.Mesh(new THREE.IcosahedronGeometry(10, 1), glow(0x8a4aff, 0.55)); voidStar.position.y = -16; scene.add(voidStar);
+  const vl = new THREE.PointLight(0x8a4aff, 1.1, 170); vl.position.y = -4; scene.add(vl);
+  const topM = new THREE.MeshPhongMaterial({ map: groundTexture(), shininess: 40, specular: 0x223355 }), sideM = mat(0x141829), pilM = mat(0x252c44);
+  const a0 = A.coreAl - 8, a1 = A.spawnAl + 8, w0 = A.laneHalfW, w1 = A.laneHalfW + 4, wAt = al => w0 + (w1 - w0) * (al - a0) / (a1 - a0);
   for (let i = 0; i < 6; i++) {
-    const p = G.players[i], col = ELEMENTS[p.el].color, a0 = i * SEC, a1 = (i + 1) * SEC, d = laneDir(i), ang = laneAng(i);
-    const V = (al, la, y) => [d[0] * al + d[1] * la, y, d[1] * al - d[0] * la];
-    // şerit: çekirdeğe doğru daralan ışıklı yol
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute([...V(7, -1.5, 0.04), ...V(7, 1.5, 0.04), ...V(A.spawnR, A.laneHalfW, 0.04), ...V(7, -1.5, 0.04), ...V(A.spawnR, A.laneHalfW, 0.04), ...V(A.spawnR, -A.laneHalfW, 0.04)], 3));
-    scene.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.09, side: THREE.DoubleSide, depthWrite: false })));
-    for (const s of [-1, 1]) { const lg = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...V(7, s * 1.5, 0.06)), new THREE.Vector3(...V(A.spawnR, s * A.laneHalfW, 0.06))]); scene.add(new THREE.Line(lg, new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.55 }))); }
-    // oyuncunun sabit alanı
-    const zg = new THREE.BufferGeometry().setFromPoints([[Z.aMin, -Z.lat], [Z.aMin, Z.lat], [Z.aMax, Z.lat], [Z.aMax, -Z.lat]].map(q => new THREE.Vector3(...V(q[0], q[1], 0.08))));
-    scene.add(new THREE.LineLoop(zg, new THREE.LineBasicMaterial({ color: i === 0 ? 0xffffff : col, transparent: true, opacity: i === 0 ? 0.8 : 0.3 })));
-    // köşe sütunu + kenar ışığı
-    const pil = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.7, 10, 6), mat(0x252c44))); pil.position.set(Math.sin(a0) * A.R, 5, Math.cos(a0) * A.R); scene.add(pil);
-    const cap = new THREE.Mesh(new THREE.OctahedronGeometry(1.2), new THREE.MeshBasicMaterial({ color: 0x8fb8ff })); cap.position.set(pil.position.x, 11.6, pil.position.z); scene.add(cap);
-    const ex = (Math.sin(a0) + Math.sin(a1)) / 2 * A.R, ez = (Math.cos(a0) + Math.cos(a1)) / 2 * A.R;
-    const edge = new THREE.Mesh(new THREE.BoxGeometry(A.R, 0.25, 0.35), new THREE.MeshBasicMaterial({ color: col })); edge.position.set(ex, 0.15, ez); edge.rotation.y = ang; scene.add(edge);
-    // doğuş kapısı
-    const portal = new THREE.Group(); portal.position.set(d[0] * (A.spawnR - 4), 0, d[1] * (A.spawnR - 4)); portal.rotation.y = ang;
-    portal.add(new THREE.Mesh(new THREE.TorusGeometry(A.laneHalfW, 0.45, 5, 20, Math.PI), new THREE.MeshBasicMaterial({ color: 0xff3a8a })));
-    const veil = new THREE.Mesh(new THREE.CircleGeometry(A.laneHalfW, 20, 0, Math.PI), glow(0x8a2aff, 0.12)); portal.add(veil); scene.add(portal);
-    const lab = makeLabel(ELEMENTS[p.el].icon + ' ' + p.name, hex(col)); lab.scale.set(14, 3.5, 1); lab.position.set(d[0] * 62, 16, d[1] * 62); scene.add(lab);
+    const p = G.players[i], col = ELEMENTS[p.el].color, me = i === 0, g = new THREE.Group(); g.rotation.y = laneAng(i); scene.add(g);   // grup-yerel: x = la, z = al
+    const sh = new THREE.Shape(); sh.moveTo(-w0, a0); sh.lineTo(w0, a0); sh.lineTo(w1, a1); sh.lineTo(-w1, a1); sh.closePath();
+    const isl = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 5, bevelEnabled: false }), [topM, sideM]); isl.rotation.x = Math.PI / 2; isl.receiveShadow = true; g.add(isl);
+    for (const q of [[0, 58, 15, 34], [-4, 92, 13, 26], [5, 78, 9, 44]]) { const rk = new THREE.Mesh(new THREE.ConeGeometry(q[2], q[3], 6), sideM); rk.rotation.x = Math.PI; rk.position.set(q[0], -5 - q[3] / 2, q[1]); g.add(rk); }
+    const sg2 = new THREE.BufferGeometry(); sg2.setAttribute('position', new THREE.Float32BufferAttribute([-3, 0.04, A.coreAl, 3, 0.04, A.coreAl, w1 - 3, 0.04, A.spawnAl, -3, 0.04, A.coreAl, w1 - 3, 0.04, A.spawnAl, 3 - w1, 0.04, A.spawnAl], 3));
+    g.add(new THREE.Mesh(sg2, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.09, side: THREE.DoubleSide, depthWrite: false })));
+    for (const s of [-1, 1]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, a1 - a0), new THREE.MeshBasicMaterial({ color: col })); r.position.set(s * (w0 + w1) / 2, 0.15, (a0 + a1) / 2); r.rotation.y = s * Math.atan2(w1 - w0, a1 - a0); g.add(r); }
+    for (let al = A.spawnAl - 4; al > Z.aMax + 4; al -= 8) { const st = new THREE.Mesh(new THREE.BoxGeometry(wAt(al) * 1.7, 0.05, 0.22), glow(col, 0.22)); st.position.set(0, 0.05, al); g.add(st); }
+    const zg = new THREE.BufferGeometry().setFromPoints([[-Z.lat, Z.aMin], [Z.lat, Z.aMin], [Z.lat, Z.aMax], [-Z.lat, Z.aMax]].map(q => new THREE.Vector3(q[0], 0.08, q[1])));
+    g.add(new THREE.LineLoop(zg, new THREE.LineBasicMaterial({ color: me ? 0xffffff : col, transparent: true, opacity: me ? 0.85 : 0.3 })));
+    for (const al of [a0 + 1.5, 62, 86, a1 - 1.5]) for (const s of [-1, 1]) {
+      const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.9, 5, 6), pilM); pil.castShadow = me; pil.position.set(s * (wAt(al) - 0.9), 2.5, al); g.add(pil);
+      const cap = new THREE.Mesh(new THREE.OctahedronGeometry(0.6), new THREE.MeshBasicMaterial({ color: col })); cap.position.set(pil.position.x, 5.9, al); g.add(cap);
+    }
+    const portal = new THREE.Group(); portal.position.set(0, 0, A.spawnAl + 3); g.add(portal);
+    portal.add(new THREE.Mesh(new THREE.TorusGeometry(A.laneHalfW, 0.5, 5, 22, Math.PI), new THREE.MeshBasicMaterial({ color: 0xff3a8a })));
+    portal.add(new THREE.Mesh(new THREE.CircleGeometry(A.laneHalfW, 22, 0, Math.PI), glow(0x8a2aff, 0.16)));
+    if (!me) { const lab = makeLabel(ELEMENTS[p.el].icon + ' ' + p.name, hex(col)); lab.scale.set(18, 4.5, 1); lab.position.set(0, 19, A.spawnAl); g.add(lab); }
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(A.coreR, A.coreR + 1.5, 1.6, 6), pilM); base.position.set(0, 0.8, A.coreAl); base.castShadow = me; g.add(base);
+    const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.9), mat(col, col, 0.9)); core.scale.y = 1.6; core.position.set(0, 5.2, A.coreAl); g.add(core);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.08, 4, 28), new THREE.MeshBasicMaterial({ color: col })); ring.position.copy(core.position); g.add(ring);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 1.2, 90, 8, 1, true), glow(col, 0.13)); beam.position.set(0, 48, A.coreAl); g.add(beam);
+    let light = null; if (me) { light = new THREE.PointLight(col, 1.5, 60); light.position.set(0, 7, A.coreAl); g.add(light); }
+    LANES.push({ core, ring, beam, light, col, flash: 0, cx: p.dir[0] * A.coreAl, cz: p.dir[1] * A.coreAl });
   }
-  // çekirdek
-  const base = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(A.coreR, A.coreR + 1.5, 1.6, 6), mat(0x252c44))); base.position.y = 0.8; base.receiveShadow = true; scene.add(base);
-  coreMesh = new THREE.Mesh(new THREE.OctahedronGeometry(2.3), mat(0x39d0ff, 0x39d0ff, 0.9)); coreMesh.scale.y = 1.6; coreMesh.position.y = 6; scene.add(coreMesh);
-  for (let i = 0; i < 2; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(3.6 + i * 0.9, 0.09, 4, 32), new THREE.MeshBasicMaterial({ color: 0x9fe8ff })); r.position.y = 6; scene.add(r); coreRings.push(r); }
-  coreBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.6, 120, 8, 1, true), glow(0x39d0ff, 0.16)); coreBeam.position.y = 62; scene.add(coreBeam);
-  coreLight = new THREE.PointLight(0x39d0ff, 1.6, 70); coreLight.position.y = 7; scene.add(coreLight);
-  // havada süzülen toz
-  const mp = []; for (let i = 0; i < 380; i++) { const a = Math.random() * TAU, r = rand(4, 78); mp.push(Math.sin(a) * r, rand(0.5, 26), Math.cos(a) * r); }
+  // gölge yalnızca oyuncunun adasını kapsar
+  const d = G.human.dir, mid = (A.coreAl + A.spawnAl) / 2;
+  sun.target.position.set(d[0] * mid, 0, d[1] * mid); scene.add(sun.target); sun.position.set(d[0] * mid + 45, 90, d[1] * mid + 30);
+  Object.assign(sun.shadow.camera, { left: -52, right: 52, top: 52, bottom: -52, near: 10, far: 220 }); sun.shadow.camera.updateProjectionMatrix();
+  const mp = []; for (let i = 0; i < 320; i++) { const al = rand(30, 122), la = rand(-26, 26); mp.push(d[0] * al + d[1] * la, rand(0.5, 24), d[1] * al - d[0] * la); }
   const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.Float32BufferAttribute(mp, 3));
   motes = new THREE.Points(mg, new THREE.PointsMaterial({ color: 0x9fc0ff, size: 0.22, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })); scene.add(motes);
 }
@@ -372,10 +374,10 @@ function makePlayer(id, el) {
   const d = laneDir(id), col = ELEMENTS[el].color;
   const p = {
     id, isBot: id !== 0 || AUTO, name: id === 0 ? 'SEN' : 'Bot ' + id, el, edge: id, dir: d,
-    x: d[0] * CFG.arena.postR, z: d[1] * CFG.arena.postR, faceYaw: laneAng(id),
+    x: d[0] * CFG.arena.postAl, z: d[1] * CFG.arena.postAl, faceYaw: laneAng(id), core: CFG.core.hp, alive: true, chain: 0, outRound: 0,
     build: { core: 'single', coreLvl: 1, mod: null, modLvl: 1, passive: null, passiveLvl: 1, echo: null, echoLvl: 1 },
     stats: {}, modv: {}, cd: 0, ult: 0, flip: false, stamina: CFG.player.stamina, exhausted: false,
-    towers: [], kills: 0, dmgDone: 0, combos: 0, leaks: 0, recoil: 0, walk: 0, moving: false, faceT: 0, wp: Math.random() * 9,
+    kills: 0, dmgDone: 0, combos: 0, leaks: 0, recoil: 0, walk: 0, moving: false, faceT: 0, wp: Math.random() * 9,
   };
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body); p.body = body;
   const dark = mat(0x2a3146), elm = mat(col, col, 0.55);
@@ -402,7 +404,7 @@ function calcStats(p) {
   s.rate = 1 + pv('rate'); s.range = 1 + pv('range'); s.kb = 1 + pv('kb');
   s.crit = CFG.crit.chance + pv('crit'); s.critMult = CFG.crit.mult + pv('critMult'); s.ult = 1 + pv('ult');
   s.combo = (1 + pv('combo')) * (1 + CFG.combo.echoLvl * (b.echoLvl - 1));
-  s.towers = CFG.player.towers + Math.round(pv('towers')); s.towerDmg = 1 + pv('towerDmg');
+  s.mend = pv('mend');
   const m = b.mod ? MODS[b.mod] : {}, ml = 1 + LVL.mod * (b.modLvl - 1);
   p.modv = {
     pierce: Math.round((m.pierce || 0) * ml), bounce: Math.round((m.bounce || 0) * ml),
@@ -413,34 +415,12 @@ function calcStats(p) {
   };
 }
 const heroRange = p => CORES[p.build.core].range * p.stats.range * p.modv.rangeMul;
-const dmgMult = p => (p.id !== 0 ? CFG.bot.dmgBonus : 1) * (1 + G.chain * CFG.flawless.dmgPerChain);
+const dmgMult = p => (p.id !== 0 ? CFG.bot.dmgBonus : 1) * (1 + p.chain * CFG.flawless.dmgPerChain);
 /* Rezonans slotu doluysa atışlar ana element / ikinci element arasında dönüşümlü gider. */
 function shotEl(ent, owner) { const e = owner.build.echo; if (e) { ent.flip = !ent.flip; return ent.flip ? e : owner.el; } return owner.el; }
 function clampZone(p) {
   const d = p.dir, Z = CFG.zone, al = clamp(p.x * d[0] + p.z * d[1], Z.aMin, Z.aMax), la = clamp(p.x * d[1] - p.z * d[0], -Z.lat, Z.lat);
   p.x = d[0] * al + d[1] * la; p.z = d[1] * al - d[0] * la;
-}
-
-/* --------------------------------- kuleler -------------------------------- */
-function makeTower(owner) {
-  const col = ELEMENTS[owner.el].color, g = new THREE.Group();
-  const base = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.25, 0.7, 6), mat(0x2a3146))); base.position.y = 0.35; g.add(base);
-  const colm = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.55, 2.2, 6), mat(0x39445c))); colm.position.y = 1.7; g.add(colm);
-  const top = new THREE.Mesh(new THREE.OctahedronGeometry(0.62), new THREE.MeshBasicMaterial({ color: col })); top.position.y = 3.5; g.add(top);
-  const halo = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.06, 4, 16), new THREE.MeshBasicMaterial({ color: col })); halo.position.y = 3.5; halo.rotation.x = Math.PI / 2; g.add(halo);
-  scene.add(g);
-  return { owner, x: 0, z: 0, cd: Math.random(), flip: false, mesh: g, top, halo, pulse: 0 };
-}
-function placeTower(p, x, z) {
-  const P = CFG.player, r = Math.hypot(x, z);
-  if (sectorOf(x, z) !== p.edge) return 'Kule yalnızca kendi alanına konur.';
-  if (r < P.towerMinR || r > P.towerMaxR) return 'Buraya kule konmaz.';
-  const full = p.towers.length >= p.stats.towers, oldest = full ? p.towers[0] : null;
-  for (const t of G.towers) if (t !== oldest && Math.hypot(t.x - x, t.z - z) < 2.4) return 'Burada zaten kule var.';
-  let t; if (full) t = p.towers.shift(); else { t = makeTower(p); G.towers.push(t); }
-  t.x = x; t.z = z; t.mesh.position.set(x, 0, z); p.towers.push(t);
-  spawnRing(x, z, 4, ELEMENTS[p.el].color, 0.4);
-  return null;
 }
 
 /* -------------------------------- yaratıklar ------------------------------ */
@@ -456,9 +436,10 @@ const creepPool = new Pool(CFG.pools.creeps, () => {
 });
 function spawnCreep(lane, type) {
   const c = creepPool.get(); if (!c) return;
-  const T = CREEPS[type], d = laneDir(lane), off = rand(-CFG.arena.laneHalfW, CFG.arena.laneHalfW) * 0.85, R = CFG.arena.spawnR + rand(-3, 2), boss = type === 'boss';
+  const T = CREEPS[type], d = laneDir(lane), A = CFG.arena, off = rand(-A.laneHalfW, A.laneHalfW) * 0.85, R = A.spawnAl + rand(-3, 2), boss = type === 'boss';
   c.active = true; c.type = type; c.lane = lane; c.T = T;
-  c.x = d[0] * R + d[1] * off; c.z = d[1] * R - d[0] * off; c.d = R;
+  c.x = d[0] * R + d[1] * off; c.z = d[1] * R - d[0] * off; c.tx = d[0] * A.coreAl; c.tz = d[1] * A.coreAl;
+  c.d = Math.hypot(c.tx - c.x, c.tz - c.z); c.ux = (c.tx - c.x) / c.d; c.uz = (c.tz - c.z) / c.d;
   c.maxHp = c.hp = G.roundHp * T.hp; c.speed = CFG.wave.speed * T.speed * rand(0.92, 1.08);
   c.radius = T.radius; c.h = boss ? 8 : 2.6;
   c.slowT = c.slowF = c.stunT = c.dotT = c.dotDps = c.vulnT = c.comboCd = c.popAcc = c.popNext = c.flash = c.punch = c.born = 0;
@@ -471,7 +452,7 @@ function spawnCreep(lane, type) {
   if (horns) { c.hornL.scale.setScalar(s); c.hornR.scale.setScalar(s); c.hornL.position.set(-0.4 * s, by + 0.85 * s, 0); c.hornR.position.set(0.4 * s, by + 0.85 * s, 0); c.hornL.rotation.z = 0.35; c.hornR.rotation.z = -0.35; }
   if (boss) { c.crown.scale.setScalar(s * 0.9); c.crown.position.y = by + 1.5 * s; }
   c.bar.position.y = c.h; c.bar.visible = false; c.barW = boss ? 4 : 1; c.bar.scale.set(c.barW, boss ? 2 : 1, 1);
-  c.mesh.position.set(c.x, 0, c.z); c.model.rotation.y = Math.atan2(-c.x, -c.z); c.model.scale.setScalar(0.01); c.mesh.visible = true;
+  c.mesh.position.set(c.x, 0, c.z); c.model.rotation.y = Math.atan2(c.ux, c.uz); c.model.scale.setScalar(0.01); c.mesh.visible = true;
   G.creeps.push(c);
   if (lane === 0) spawnRing(c.x, c.z, boss ? 8 : 2.5, 0xff3a8a, 0.4);
 }
@@ -588,9 +569,9 @@ const FEEL = {
 };
 
 /* ============================ 5. COMBAT + COMBO =========================== */
-function nearestCreep(x, z, maxR, exclude) {
+function nearestCreep(x, z, maxR, exclude, lane) {
   let best = null, bd = maxR * maxR;
-  for (const c of G.creeps) { if (!c.active || (exclude && exclude.includes(c))) continue; const dx = c.x - x, dz = c.z - z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = c; } }
+  for (const c of G.creeps) { if (!c.active || (lane != null && c.lane !== lane) || (exclude && exclude.includes(c))) continue; const dx = c.x - x, dz = c.z - z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = c; } }
   return best;
 }
 function mostAdvanced(x, z, maxR, lane) {  // menzildeki, çekirdeğe en yakın yaratık (kendi şeridinden)
@@ -600,7 +581,8 @@ function mostAdvanced(x, z, maxR, lane) {  // menzildeki, çekirdeğe en yakın 
 }
 function addSlow(c, f, dur) { if (c.slowT <= 0) c.slowF = 0; c.slowF = Math.max(c.slowF, f); c.slowT = Math.max(c.slowT, dur); }
 function setDot(c, dps, dur, owner) { c.dotDps = Math.max(c.dotT > 0 ? c.dotDps : 0, dps); c.dotT = dur; c.dotOwner = owner; }
-function knock(c, amt) { if (amt <= 0) return; const k = Math.min(3, amt * c.T.kb), d = c.d || 1; if (d + k > CFG.arena.spawnR + 3) return; c.x += c.x / d * k; c.z += c.z / d * k; c.d = d + k; }
+function knock(c, amt) { if (amt <= 0) return; const k = Math.min(3, amt * c.T.kb); if (c.d + k > LANE_LEN + 4) return; c.x -= c.ux * k; c.z -= c.uz * k; c.d += k; }
+const LANE_LEN = CFG.arena.spawnAl - CFG.arena.coreAl;
 
 function damageCreep(owner, c, d, label, crit) {
   if (!c.active) return;
@@ -684,8 +666,8 @@ function fireHero(p, tgt) {
   spawnFx(mx, 1.5, mz, core.kind === 'beam' ? 0.5 : 1.0, col, 0.07);          // namlu parlaması
   if (me) { SFX.shoot(core.kind, el); FEEL.shake(CFG.feel.trauma.shot * (core.kind === 'beam' ? 0.3 : core.aoe || core.pellets ? 2 : 1)); FEEL.kick += core.kind === 'beam' ? 0.05 : core.aoe || core.pellets ? 0.45 : 0.22; }
   if (core.kind === 'proj') {
-    const tt = d / core.speed, sp = tgt.stunT > 0 ? 0 : tgt.speed * (tgt.slowT > 0 ? 1 - tgt.slowF : 1), cd = tgt.d || 1;
-    dx = tgt.x - tgt.x / cd * sp * tt - mx; dz = tgt.z - tgt.z / cd * sp * tt - mz;
+    const tt = d / core.speed, sp = tgt.stunT > 0 ? 0 : tgt.speed * (tgt.slowT > 0 ? 1 - tgt.slowF : 1);
+    dx = tgt.x + tgt.ux * sp * tt - mx; dz = tgt.z + tgt.uz * sp * tt - mz;
     const ang = Math.atan2(dx, dz), spread = core.spread || 0.11 * (n - 1);
     for (let i = 0; i < n; i++) {
       const a = ang + (n > 1 ? (i / (n - 1) - 0.5) * spread : 0);
@@ -763,15 +745,15 @@ function updateProjectiles(dt) {
 }
 
 function updateCreeps(dt) {
-  const L = G.creeps, P = G.pressure, R = CFG.arena.spawnR; P.fill(0);
+  const L = G.creeps, P = G.pressure; P.fill(0);
   for (let i = 0; i < L.length; i++) {
     const c = L[i]; if (!c.active) continue;
     if (c.dotT > 0) { c.dotT -= dt; damageCreep(c.dotOwner, c, c.dotDps * dt, null, false); if (!c.active) continue; }
     if (c.slowT > 0) c.slowT -= dt; if (c.vulnT > 0) c.vulnT -= dt;
     let sp = c.speed; if (c.stunT > 0) { c.stunT -= dt; sp = 0; } else if (c.slowT > 0) sp *= 1 - c.slowF;
-    const d = Math.hypot(c.x, c.z) || 1; c.x -= c.x / d * sp * dt; c.z -= c.z / d * sp * dt; c.d = d;
+    const ex = c.tx - c.x, ez = c.tz - c.z, d = Math.hypot(ex, ez) || 1; c.ux = ex / d; c.uz = ez / d; c.x += c.ux * sp * dt; c.z += c.uz * sp * dt; c.d = d;
     if (d < CFG.arena.coreR + c.radius) { leak(c); continue; }
-    const near = 1 - Math.min(1, d / R); P[c.lane] += (c.hp / G.roundHp) * (0.5 + 2.5 * near * Math.sqrt(near));
+    const near = 1 - Math.min(1, d / LANE_LEN); P[c.lane] += (c.hp / G.roundHp) * (0.5 + 2.5 * near * Math.sqrt(near));
     // animasyon: doğuş büyümesi, yürüyüş salınımı, vuruş ezilmesi ve beyaz parlama
     c.born = Math.min(1, c.born + dt * 4); c.ph += dt * (2 + sp * 1.6);
     if (c.punch > 0) c.punch = Math.max(0, c.punch - dt * 7);
@@ -790,13 +772,22 @@ function updateCreeps(dt) {
   for (let i = L.length - 1; i >= 0; i--) if (!L[i].active) { creepPool.put(L[i]); L[i] = L[L.length - 1]; L.pop(); }
 }
 function leak(c) {
-  const mine = c.lane === 0, owner = G.players[c.lane];
-  G.coreHp = Math.max(0, G.coreHp - c.T.leak); G.roundLeaks[c.lane]++; G.stats.leaks++; owner.leaks++;
-  spawnFx(0, 5, 0, 10, 0xff3030, 0.5); spawnRing(0, 0, 14, 0xff3030, 0.6); coreFlash = 0.4; removeCreep(c);
-  if (mine) { FEEL.shake(CFG.feel.trauma.leak); SFX.leak(); vignette(0.9); FEEL.streak = 0; FEEL.streakT = 0; $('streak').style.opacity = 0; }
-  if (G.roundLeaks[c.lane] === 1) feed('<b style="color:#ff6a5a">Sızıntı!</b> ' + owner.name + ' alanından çekirdeğe ulaşıldı.');
+  const mine = c.lane === 0, owner = G.players[c.lane], L = LANES[c.lane];
+  owner.core = Math.max(0, owner.core - c.T.leak); G.roundLeaks[c.lane]++; owner.leaks++;
+  spawnFx(L.cx, 5, L.cz, 8, 0xff3030, 0.5); spawnRing(L.cx, L.cz, 11, 0xff3030, 0.6); L.flash = 0.4; removeCreep(c);
+  if (mine) { FEEL.shake(CFG.feel.trauma.leak); SFX.leak(); vignette(0.9); FEEL.streak = 0; FEEL.streakT = 0; $('streak').style.opacity = 0; if (G.roundLeaks[0] === 1) feed('<b style="color:#ff6a5a">Sızıntı!</b> Çekirdeğin hasar aldı.'); }
+  if (owner.core <= 0) eliminate(owner);
 }
-let coreFlash = 0;
+/* Çekirdeği düşen savunucu elenir: adası söner, dalgası durur. İnsan oyuncuysa oyun biter. */
+function eliminate(p) {
+  if (!p.alive) return; p.alive = false; p.outRound = G.round;
+  const L = LANES[p.edge]; L.core.visible = L.ring.visible = L.beam.visible = false; if (L.light) L.light.intensity = 0;
+  spawnDebris(L.cx, 5, L.cz, 40, 16, 0, 2); spawnFx(L.cx, 5, L.cz, 16, 0xff3030, 0.8); spawnRing(L.cx, L.cz, 22, 0xff3030, 0.9);
+  if (p === G.human) return;
+  p.mesh.visible = false; for (const c of G.creeps) if (c.lane === p.edge) removeCreep(c);
+  G.spawnQ = G.spawnQ.filter(s => s.lane !== p.edge);
+  feed('<b style="color:#ff6a5a">' + ELEMENTS[p.el].icon + ' ' + p.name + ' elendi</b> — çekirdeği düştü (tur ' + G.round + ').');
+}
 
 function castUlt(p) {
   if (p.ult < CFG.ult.need) return false;
@@ -812,15 +803,12 @@ function castUlt(p) {
 /* Botlar da yalnızca kendi alanında kalır: hafif gezinir, en ilerideki yaratığa ateş eder, kalabalıkta ult atar. */
 function updateBot(p, dt) {
   const d = p.dir; p.wp += dt * 0.5;
-  const la = Math.sin(p.wp + p.id) * CFG.bot.wander, al = CFG.arena.postR + Math.sin(p.wp * 0.7 + p.id * 2) * 3;
+  const la = Math.sin(p.wp + p.id) * CFG.bot.wander, al = CFG.arena.postAl + Math.sin(p.wp * 0.7 + p.id * 2) * 3;
   const tx = d[0] * al + d[1] * la, tz = d[1] * al - d[0] * la; let dx = tx - p.x, dz = tz - p.z; const dist = Math.hypot(dx, dz);
   p.moving = dist > 0.4;
   if (p.moving) { dx /= dist; dz /= dist; p.x += dx * CFG.player.walk * 0.6 * dt; p.z += dz * CFG.player.walk * 0.6 * dt; clampZone(p); if (p.faceT <= 0) p.faceYaw = Math.atan2(dx, dz); }
   if (p.ult >= CFG.ult.need) { let n = 0; const r2 = (CFG.ult.radius * 0.85) ** 2; for (const c of G.creeps) if (c.active && (c.x - p.x) ** 2 + (c.z - p.z) ** 2 < r2) n += c.type === 'boss' ? 4 : 1; if (n >= 4) castUlt(p); }
   if ((p.cd -= dt) <= 0) { const t = mostAdvanced(p.x, p.z, heroRange(p), p.edge); if (t) { fireHero(p, t); p.cd = 1 / (CORES[p.build.core].rate * p.stats.rate); } }
-}
-function botPlaceTowers() {
-  for (const p of G.players) { if (!p.isBot) continue; while (p.towers.length < p.stats.towers) { const k = p.towers.length, d = p.dir, al = 17 + (k >> 1) * 6, la = (k & 1 ? 1 : -1) * 7; if (placeTower(p, d[0] * al + d[1] * la, d[1] * al - d[0] * la)) break; } }
 }
 function botDraft(p) {
   const cards = genCards(p, 3), up = cards.find(c => c.slot === 'core' && c.id === p.build.core);
@@ -832,7 +820,7 @@ function botDraft(p) {
 const Input = { move: { x: 0, y: 0 }, look: { dx: 0, dy: 0 }, fire: false, sprint: false, actions: [], press(a) { this.actions.push(a); } };
 const DesktopSource = {
   keys: {}, noLock: false,    // imleç kilidi yoksa (gömülü çerçeve) fare hareketi doğrudan bakışa gider
-  bind: { KeyF: 'ult', KeyR: 'tower', KeyT: 'auto', KeyM: 'mute', KeyB: 'bloom', Digit1: 'card0', Digit2: 'card1', Digit3: 'card2', Digit4: 'card3' },
+  bind: { KeyF: 'ult', KeyT: 'auto', KeyM: 'mute', KeyB: 'bloom', Digit1: 'card0', Digit2: 'card1', Digit3: 'card2', Digit4: 'card3' },
   init() {
     addEventListener('keydown', e => { if (e.repeat) return; this.keys[e.code] = true; const a = this.bind[e.code]; if (a) Input.press(a); if (e.code === 'Tab' || e.code === 'Space') e.preventDefault(); });
     addEventListener('keyup', e => { this.keys[e.code] = false; });
@@ -870,7 +858,7 @@ function updateCamera(dt) {
 function aimTarget(p, range) {
   camera.getWorldDirection(_dir); let best = null, bc = 0.93; const r2 = range * range;
   for (const c of G.creeps) {
-    if (!c.active || (c.x - p.x) ** 2 + (c.z - p.z) ** 2 > r2) continue;
+    if (!c.active || c.lane !== p.edge || (c.x - p.x) ** 2 + (c.z - p.z) ** 2 > r2) continue;
     _v.set(c.x - camera.position.x, c.by - camera.position.y, c.z - camera.position.z).normalize();
     const d = _v.dot(_dir); if (d > bc) { bc = d; best = c; }
   }
@@ -888,7 +876,7 @@ function updateHuman(p, dt) {
   for (const a of Input.actions) {
     let err = null;
     if (a === 'ult') { if (!castUlt(p)) err = 'Ult hazır değil — öldürdükçe dolar.'; }
-    else if (a === 'tower') { err = placeTower(p, p.x + fx * 4, p.z + fz * 4); if (!err) SFX.tower(); }
+
     else if (a === 'auto') { G.autoFire = !G.autoFire; feed('Otomatik ateş: <b>' + (G.autoFire ? 'AÇIK' : 'KAPALI') + '</b>'); }
     else if (a === 'mute') { SFX.on = !SFX.on; feed('Ses: <b>' + (SFX.on ? 'AÇIK' : 'KAPALI') + '</b>'); }
     else if (a === 'bloom') { G.bloom = !G.bloom; feed('Işıma efekti: <b>' + (G.bloom ? 'AÇIK' : 'KAPALI') + '</b>'); }
@@ -896,7 +884,7 @@ function updateHuman(p, dt) {
   }
   p.cd -= dt;
   if (p.cd <= 0 && (Input.fire || G.autoFire)) {
-    const range = heroRange(p), t = (Input.fire && aimTarget(p, range)) || nearestCreep(p.x, p.z, range);
+    const range = heroRange(p), t = (Input.fire && aimTarget(p, range)) || nearestCreep(p.x, p.z, range, null, p.edge);
     if (t) { fireHero(p, t); p.cd = 1 / (CORES[p.build.core].rate * p.stats.rate); }
   }
 }
@@ -911,18 +899,6 @@ function updateHeroCommon(p, dt) {
   p.orb.position.y = 2.6 + Math.sin(G.time * 3 + p.id) * 0.15; p.orb.rotation.y += dt * 3; p.orb.scale.setScalar(p.ult >= CFG.ult.need ? 1.8 + Math.sin(G.time * 10) * 0.3 : 0.6 + p.ult / 100 * 0.7);
   let dy = p.faceYaw - p.mesh.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.mesh.rotation.y += dy * Math.min(1, dt * 18);
   p.mesh.position.set(p.x, 0, p.z);
-}
-function updateTowers(dt) {
-  const T = CFG.tower;
-  for (const t of G.towers) {
-    t.top.rotation.y += dt * 2; t.halo.rotation.z += dt * 1.5; t.pulse = Math.max(0, t.pulse - dt * 6); t.top.scale.setScalar(1 + t.pulse * 0.5);
-    t.top.position.y = 3.5 + Math.sin(G.time * 2 + t.x) * 0.15;
-    if ((t.cd -= dt) > 0) continue;
-    const o = t.owner, c = mostAdvanced(t.x, t.z, T.range, o.edge); if (!c) { t.cd = 0.15; continue; }
-    const el = shotEl(t, o), dx = c.x - t.x, dz = c.z - t.z, d = Math.hypot(dx, dz) || 1;
-    spawnProj(o, t.x, t.z, dx / d, dz / d, T.speed, T.dmg * o.stats.dmg * o.stats.towerDmg * dmgMult(o), el, T.range / T.speed * 1.4, { turn: T.turn, target: c, small: true, kb: 0.15, kbMul: T.kb });
-    t.cd = 1 / T.rate; t.pulse = 1;
-  }
 }
 function updateFx(dt) {
   for (let i = G.fxs.length - 1; i >= 0; i--) {
@@ -947,14 +923,16 @@ function updateFx(dt) {
   }
 }
 function updateScenery(dt) {
-  const low = G.coreHp / CFG.core.hp < 0.35, t = G.time;
-  coreMesh.rotation.y += dt * 0.8; coreMesh.position.y = 6 + Math.sin(t * 1.5) * 0.35;
-  coreRings[0].rotation.x += dt * 1.1; coreRings[0].rotation.y += dt * 0.6; coreRings[1].rotation.z += dt * 0.9; coreRings[1].rotation.x -= dt * 0.5;
-  if (coreFlash > 0) coreFlash -= dt;
-  const col = coreFlash > 0 || (low && Math.sin(t * 8) > 0) ? 0xff3a3a : 0x39d0ff;
-  coreMesh.material.emissive.setHex(col); coreMesh.material.color.setHex(col); coreLight.color.setHex(col); coreBeam.material.color.setHex(col);
-  coreLight.intensity = 1.5 + Math.sin(t * 3) * 0.3 + (coreFlash > 0 ? 2 : 0);
-  motes.rotation.y += dt * 0.02; motes.position.y = Math.sin(t * 0.3) * 1.5;
+  const t = G.time;
+  for (let i = 0; i < 6; i++) {
+    const L = LANES[i], p = G.players[i]; if (!p.alive) continue;
+    L.core.rotation.y += dt * 0.8; L.core.position.y = 5.2 + Math.sin(t * 1.5 + i) * 0.3; L.ring.rotation.x += dt * 1.1; L.ring.rotation.y += dt * 0.6;
+    if (L.flash > 0) L.flash -= dt;
+    const col = L.flash > 0 || (p.core / CFG.core.hp < 0.35 && Math.sin(t * 8) > 0) ? 0xff3a3a : L.col;
+    L.core.material.emissive.setHex(col); L.core.material.color.setHex(col); L.beam.material.color.setHex(col);
+    if (L.light) { L.light.color.setHex(col); L.light.intensity = 1.5 + Math.sin(t * 3) * 0.3 + (L.flash > 0 ? 2 : 0); }
+  }
+  motes.position.y = Math.sin(t * 0.3) * 1.5; voidStar.rotation.y += dt * 0.1; voidStar.scale.setScalar(1 + Math.sin(t * 0.8) * 0.06);
 }
 
 /* ================================ 8. UI / HUD ============================== */
@@ -976,13 +954,13 @@ const UI = {
   slow() {
     const p = G.human;
     $('roundTxt').textContent = 'TUR ' + G.round + ' / ' + CFG.rounds + (G.state === 'prep' ? '  ·  hazırlık ' + Math.ceil(CFG.prepTime - G.stateT) + ' sn' : '  ·  kalan yaratık ' + (G.creeps.length + G.spawnQ.length));
-    $('coreBar').firstElementChild.style.width = (G.coreHp / CFG.core.hp * 100) + '%';
-    $('coreBar').lastElementChild.textContent = 'ORTAK ÇEKİRDEK ' + Math.ceil(G.coreHp) + ' / ' + CFG.core.hp;
-    $('chainTxt').textContent = G.chain > 0 ? '★ Kusursuz zincir x' + G.chain + '  →  hasar +%' + Math.round(G.chain * CFG.flawless.dmgPerChain * 100) : '';
-    let h = '<h4>ALAN DURUMU · öldürme · baskı · sızıntı</h4>';
-    for (const o of G.players) h += '<div class="row' + (o === p ? ' me' : '') + '"><span>' + ELEMENTS[o.el].icon + '</span><span>' + o.name + '</span><span>' + o.kills + '</span><span class="pb"><i style="width:' + Math.min(100, G.pressure[o.edge] / 24 * 100) + '%"></i></span><span class="lk">' + (o.leaks || '') + '</span></div>';
+    $('coreBar').firstElementChild.style.width = (p.core / CFG.core.hp * 100) + '%';
+    $('coreBar').lastElementChild.textContent = 'ÇEKİRDEĞİN ' + Math.ceil(p.core) + ' / ' + CFG.core.hp;
+    $('chainTxt').textContent = p.chain > 0 ? '★ Kusursuz zincir x' + p.chain + '  →  hasar +%' + Math.round(p.chain * CFG.flawless.dmgPerChain * 100) : '';
+    let h = '<h4>SAVUNUCULAR · öldürme · çekirdek</h4>';
+    for (const o of G.players) h += '<div class="row' + (o === p ? ' me' : '') + '"' + (o.alive ? '' : ' style="opacity:.4"') + '><span>' + ELEMENTS[o.el].icon + '</span><span>' + o.name + '</span><span>' + o.kills + '</span><span class="pb"><i style="width:' + (o.core / CFG.core.hp * 100) + '%"></i></span><span class="lk">' + (o.alive ? Math.ceil(o.core) : '✖') + '</span></div>';
     $('board').innerHTML = h;
-    $('info').innerHTML = 'Kule <b>' + p.towers.length + '/' + p.stats.towers + '</b> [R] · Krit <b>%' + Math.round(p.stats.crit * 100) + '</b> · Oto [T] ' + (G.autoFire ? 'açık' : 'kapalı') + ' · En iyi seri <b>x' + FEEL.best + '</b>';
+    $('info').innerHTML = 'Krit <b>%' + Math.round(p.stats.crit * 100) + '</b> · Oto [T] ' + (G.autoFire ? 'açık' : 'kapalı') + ' · En iyi seri <b>x' + FEEL.best + '</b>';
     this.drawMini();
   },
   frame(dt) {
@@ -992,7 +970,7 @@ const UI = {
     if ((this.slowT -= dt) <= 0) { this.slowT = 0.2; this.slow(); }
     if (this.bannerT > 0 && (this.bannerT -= dt) <= 0) $('banner').style.opacity = 0;
     if (this.comboT > 0 && (this.comboT -= dt) <= 0) $('comboBanner').style.opacity = 0;
-    if (this.vigT > 0 && (this.vigT -= dt) <= 0) $('vig').style.opacity = G.coreHp / CFG.core.hp < 0.3 ? 0.35 : 0;
+    if (this.vigT > 0 && (this.vigT -= dt) <= 0) $('vig').style.opacity = G.human.core / CFG.core.hp < 0.3 ? 0.35 : 0;
     const W = innerWidth, H = innerHeight;
     for (let i = this.pops.length - 1; i >= 0; i--) {
       const o = this.pops[i]; o.t += dt;
@@ -1003,18 +981,18 @@ const UI = {
       o.el.style.transform = 'translate(' + ((_v.x * 0.5 + 0.5) * W | 0) + 'px,' + ((-_v.y * 0.5 + 0.5) * H | 0) + 'px) translate(-50%,-50%)';
     }
   },
-  drawMini() {
-    const g = this.mini, S = 170, c = S / 2, k = 78 / CFG.arena.R, X = x => c + x * k, Y = z => c - z * k;
-    g.clearRect(0, 0, S, S);
-    for (let e = 0; e < 6; e++) {
-      const a0 = e * SEC, a1 = (e + 1) * SEC, R = CFG.arena.R;
-      g.beginPath(); g.moveTo(c, c); g.lineTo(X(Math.sin(a0) * R), Y(Math.cos(a0) * R)); g.lineTo(X(Math.sin(a1) * R), Y(Math.cos(a1) * R)); g.closePath();
-      g.fillStyle = 'rgba(255,70,60,' + Math.min(0.55, G.pressure[e] / 40) + ')'; g.fill(); g.strokeStyle = hex(ELEMENTS[G.players[e].el].color); g.lineWidth = e === 0 ? 2 : 1; g.stroke();
-    }
-    g.fillStyle = '#ff5a9a'; for (const cr of G.creeps) if (cr.active) { const s = cr.type === 'boss' ? 6 : 2; g.fillRect(X(cr.x) - s / 2, Y(cr.z) - s / 2, s, s); }
-    for (const t of G.towers) { g.fillStyle = hex(ELEMENTS[t.owner.el].color); g.fillRect(X(t.x) - 2, Y(t.z) - 2, 4, 4); }
-    for (const p of G.players) { g.beginPath(); g.arc(X(p.x), Y(p.z), p === G.human ? 5 : 3.5, 0, TAU); g.fillStyle = hex(ELEMENTS[p.el].color); g.fill(); if (p === G.human) { g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke(); g.beginPath(); g.moveTo(X(p.x), Y(p.z)); g.lineTo(X(p.x + Math.sin(Cam.yaw) * 12), Y(p.z + Math.cos(Cam.yaw) * 12)); g.stroke(); } }
-    g.fillStyle = '#39d0ff'; g.beginPath(); g.arc(c, c, 4, 0, TAU); g.fill();
+  drawMini() {            // şerit radarı: üstte kapı, altta çekirdeğin, halka = menzilin
+    const g = this.mini, W = 170, H = 170, A = CFG.arena, p = G.human, d = p.dir, a0 = A.coreAl - 5, a1 = A.spawnAl + 6, sc = (H - 14) / (a1 - a0);
+    const X = la => W / 2 + la * sc, Y = al => H - 7 - (al - a0) * sc, col = hex(ELEMENTS[p.el].color);
+    g.clearRect(0, 0, W, H);
+    g.beginPath(); g.moveTo(X(-A.laneHalfW), Y(a0)); g.lineTo(X(A.laneHalfW), Y(a0)); g.lineTo(X(A.laneHalfW + 4), Y(a1)); g.lineTo(X(-A.laneHalfW - 4), Y(a1)); g.closePath();
+    g.fillStyle = 'rgba(120,150,255,.09)'; g.fill(); g.strokeStyle = col; g.lineWidth = 1.5; g.stroke();
+    g.strokeStyle = '#ff3a8a'; g.lineWidth = 3; g.beginPath(); g.moveTo(X(-A.laneHalfW), Y(A.spawnAl + 3)); g.lineTo(X(A.laneHalfW), Y(A.spawnAl + 3)); g.stroke();
+    const pal = p.x * d[0] + p.z * d[1], pla = p.x * d[1] - p.z * d[0];
+    g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 1; g.beginPath(); g.arc(X(pla), Y(pal), heroRange(p) * sc, 0, TAU); g.stroke();
+    for (const c of G.creeps) { if (!c.active || c.lane !== 0) continue; const s = c.type === 'boss' ? 8 : c.type === 'tank' ? 4 : 3; g.fillStyle = hex(c.T.eye); g.fillRect(X(c.x * d[1] - c.z * d[0]) - s / 2, Y(c.x * d[0] + c.z * d[1]) - s / 2, s, s); }
+    g.fillStyle = col; g.beginPath(); g.arc(X(pla), Y(pal), 4.5, 0, TAU); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.stroke();
+    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(X(0), Y(A.coreAl) - 6); g.lineTo(X(0) + 5, Y(A.coreAl)); g.lineTo(X(0), Y(A.coreAl) + 6); g.lineTo(X(0) - 5, Y(A.coreAl)); g.closePath(); g.fill();
   },
 };
 function popup(x, y, z, text, cls) {
@@ -1050,12 +1028,12 @@ function cardText(p, c) {
 let draftCards = null;
 function openDraft() {
   G.state = 'draft'; if (document.exitPointerLock) document.exitPointerLock();
-  for (const p of G.players) if (p.isBot) botDraft(p);
+  for (const p of G.players) if (p.isBot && p.alive) botDraft(p);
   if (AUTO) { closeDraft(); return; }
   const n = 3 + (G.extraCard ? CFG.flawless.extraCards : 0), b = G.human.build, mine = G.roundLeaks[0];
   draftCards = genCards(G.human, n);
-  let h = '<h1>Tur ' + G.round + ' tamamlandı</h1><p>' + (mine === 0 ? '<b style="color:#ffd76a">ALANIN KUSURSUZ!</b> Ekstra kart kazandın.' : 'Alanından ' + mine + ' sızıntı oldu.') +
-    (G.chain > 0 ? ' Takım zinciri x' + G.chain + ' (hasar +%' + Math.round(G.chain * CFG.flawless.dmgPerChain * 100) + ').' : '') + '</p><p>Build\'ini güçlendir — bir kart seç (tıkla ya da 1–' + n + '):</p><div class="cards">';
+  let h = '<h1>Tur ' + G.round + ' tamamlandı</h1><p>' + (mine === 0 ? '<b style="color:#ffd76a">KUSURSUZ TUR!</b> Ekstra kart kazandın.' : 'Çekirdeğine ' + mine + ' yaratık ulaştı.') +
+    (G.human.chain > 0 ? ' Kusursuz zincir x' + G.human.chain + ' (hasar +%' + Math.round(G.human.chain * CFG.flawless.dmgPerChain * 100) + ').' : '') + '</p><p>Build\'ini güçlendir — bir kart seç (tıkla ya da 1–' + n + '):</p><div class="cards">';
   draftCards.forEach((c, i) => {
     const tx = cardText(G.human, c), cur = b[c.slot], up = cur === c.id;
     h += '<div class="card" data-i="' + i + '"><div class="t">' + SLOT_T[c.slot][0] + '</div><div class="n">' + tx[0] + '</div><div class="d">' + tx[1] + '</div><div class="a">' +
@@ -1073,24 +1051,28 @@ function hideOverlay() { $('overlay').classList.add('hide'); }
 function startRound(n) {
   G.round = n; G.state = 'prep'; G.stateT = 0; G.roundLeaks.fill(0); G.waveT = 0;
   G.roundHp = CFG.wave.baseHp * Math.pow(CFG.wave.hpGrowth, n - 1);
-  G.spawnQ = genWave(n); botPlaceTowers();
+  G.spawnQ = genWave(n).filter(s => G.players[s.lane].alive);
   const boss = CFG.bossRounds.includes(n);
   banner('TUR ' + n + (boss ? ' — BOSS' : ''), boss ? '#ff6a5a' : '#fff'); SFX.round(); if (boss) SFX.boss();
 }
 function endRound() {
-  const team = G.roundLeaks.every(v => v === 0);
-  if (team) { G.chain = Math.min(CFG.flawless.maxChain, G.chain + 1); G.stats.flawless++; } else G.chain = 0;
-  G.extraCard = G.roundLeaks[0] === 0;                      // ekstra kart: KENDİ alanın kusursuzsa
+  const F = CFG.flawless;
+  for (const p of G.players) {
+    if (!p.alive) continue;
+    p.chain = G.roundLeaks[p.id] === 0 ? Math.min(F.maxChain, p.chain + 1) : 0;         // kusursuz zincir kişiseldir
+    if (p.stats.mend) p.core = Math.min(CFG.core.hp, p.core + p.stats.mend);
+  }
+  G.extraCard = G.roundLeaks[0] === 0; if (G.extraCard) G.stats.flawless++;
   if (G.round >= CFG.rounds) return endGame(true);
   openDraft();
 }
 function endGame(won) {
   G.state = won ? 'won' : 'lost'; if (document.exitPointerLock) document.exitPointerLock();
-  const rows = G.players.slice().sort((a, b) => b.kills - a.kills);
-  let t = '<table class="end"><tr><th></th><th>Oyuncu</th><th>Öldürme</th><th>Hasar</th><th>Kombo</th><th>Sızıntı</th></tr>';
-  rows.forEach((o, i) => t += '<tr class="' + (o === G.human ? 'me' : '') + '"><td>' + (i === 0 ? '👑' : '') + '</td><td>' + ELEMENTS[o.el].icon + ' ' + o.name + '</td><td>' + o.kills + '</td><td>' + Math.round(o.dmgDone) + '</td><td>' + o.combos + '</td><td>' + o.leaks + '</td></tr>');
-  showOverlay('<h1 style="color:' + (won ? '#8dffb0' : '#ff6a5a') + '">' + (won ? 'ZAFER — Çekirdek korundu!' : 'ÇEKİRDEK DÜŞTÜ') + '</h1>' +
-    '<p>Tur ' + G.round + ' / ' + CFG.rounds + ' · Çekirdek ' + Math.ceil(G.coreHp) + ' · Takım kusursuz tur: ' + G.stats.flawless + ' · En iyi serin: x' + FEEL.best + '</p>' + t + '</table>' +
+  const rows = G.players.slice().sort((a, b) => (b.alive - a.alive) || (b.outRound - a.outRound) || (b.kills - a.kills));
+  let t = '<table class="end"><tr><th></th><th>Oyuncu</th><th>Öldürme</th><th>Hasar</th><th>Kombo</th><th>Çekirdek</th></tr>';
+  rows.forEach((o, i) => t += '<tr class="' + (o === G.human ? 'me' : '') + '"><td>' + (i === 0 ? '👑' : '') + '</td><td>' + ELEMENTS[o.el].icon + ' ' + o.name + '</td><td>' + o.kills + '</td><td>' + Math.round(o.dmgDone) + '</td><td>' + o.combos + '</td><td>' + (o.alive ? Math.ceil(o.core) + ' can' : 'elendi (tur ' + o.outRound + ')') + '</td></tr>');
+  showOverlay('<h1 style="color:' + (won ? '#8dffb0' : '#ff6a5a') + '">' + (won ? 'ZAFER — Çekirdeğin ayakta!' : 'ÇEKİRDEĞİN DÜŞTÜ') + '</h1>' +
+    '<p>Tur ' + G.round + ' / ' + CFG.rounds + ' · Kusursuz tur: ' + G.stats.flawless + ' · En iyi serin: x' + FEEL.best + '</p>' + t + '</table>' +
     '<button class="go" onclick="location.reload()">Yeniden Oyna</button>');
 }
 function update(dt) {
@@ -1098,10 +1080,10 @@ function update(dt) {
   G.time += dt; G.stateT += dt;
   if (G.state === 'prep' && G.stateT >= CFG.prepTime) { G.state = 'wave'; G.stateT = 0; }
   if (G.state === 'wave') { G.waveT += dt; while (G.spawnQ.length && G.spawnQ[G.spawnQ.length - 1].t <= G.waveT) { const s = G.spawnQ.pop(); spawnCreep(s.lane, s.type); } }
-  for (const p of G.players) { if (p.isBot) updateBot(p, dt); else updateHuman(p, dt); updateHeroCommon(p, dt); }
+  for (const p of G.players) { if (!p.alive) continue; if (p.isBot) updateBot(p, dt); else updateHuman(p, dt); updateHeroCommon(p, dt); }
   Input.actions.length = 0;
-  updateTowers(dt); updateProjectiles(dt); updateCreeps(dt); updateFx(dt); updateScenery(dt);
-  if (G.coreHp <= 0) return endGame(false);
+  updateProjectiles(dt); updateCreeps(dt); updateFx(dt); updateScenery(dt);
+  if (!G.human.alive) return endGame(false);
   if (G.state === 'wave' && !G.spawnQ.length && !G.creeps.length) endRound();
 }
 let last = performance.now();
@@ -1128,10 +1110,10 @@ function init() {
   G.human = G.players[0]; Cam.yaw = laneAng(0);
   buildArena(); initPost(); UI.init(); UI.slots(); DesktopSource.init(); resize();
   const me = ELEMENTS[G.human.el];
-  showOverlay('<h1>ALTIGEN REZONANS</h1><p>Altı savunucu, altı alan. Herkes <b>kendi alanında</b> kalır ve kendi dalgasını durdurur; sızan her yaratık Ortak Çekirdek\'i yaralar.<br>' +
+  showOverlay('<h1>ALTIGEN REZONANS</h1><p>Altı savunucu, altı ayrı ada. Herkes <b>yalnızca kendi çekirdeğini</b> savunur; çekirdeğine ulaşan her yaratık canını azaltır, çekirdeği düşen elenir.<br>' +
     'Elementin: <b style="color:' + hex(me.color) + '">' + me.icon + ' ' + me.name + '</b> — ' + me.tdesc + '. Tur aralarında kart seçerek kendi build\'ini kur.</p>' +
     '<div class="keys"><div><b>WASD</b> hareket (beyaz çerçeveli alanın içinde)</div><div><b>Fare</b> bakış · <b>Shift</b> sprint</div>' +
-    '<div><b>Sol tık</b> nişanlı ateş · <b>T</b> oto ateş aç/kapa</div><div><b>R</b> kule koy (dolunca en eskisi taşınır)</div>' +
+    '<div><b>Sol tık</b> nişanlı ateş · <b>T</b> oto ateş aç/kapa</div><div><b>Sağ alt</b>: şerit radarı (halka = menzilin)</div>' +
     '<div><b>F</b> Ult — öldürdükçe ve seri yaptıkça dolar</div><div><b>M</b> ses · <b>B</b> ışıma efekti</div>' +
     '<div><b>Kritik</b>: sarı sayı, x2 hasar</div><div><b>Rezonans</b> kartı: 2. element → kombo patlamaları</div></div>' +
     '<button class="go" id="goBtn">BAŞLA</button>');
