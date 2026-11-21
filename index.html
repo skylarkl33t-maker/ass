@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Altıgen Rezonans</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#0a0d14;color:#e8eef7;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none;-webkit-user-select:none}
+  #c{position:fixed;inset:0;width:100%;height:100%;display:block}
+  #hud{position:fixed;inset:0;pointer-events:none;font-size:13px}
+  .panel{background:rgba(10,14,22,.72);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 10px}
+  #top{position:absolute;top:10px;left:50%;transform:translateX(-50%);text-align:center;min-width:340px}
+  #roundTxt{font-weight:700;font-size:15px;letter-spacing:.5px}
+  #coreBar{position:relative;height:18px;margin:6px 0 4px;background:#1b2230;border-radius:9px;overflow:hidden}
+  #coreBar i{position:absolute;left:0;top:0;bottom:0;width:100%;background:linear-gradient(90deg,#39d0ff,#7af7d0);transition:width .2s}
+  #coreBar span{position:relative;font-size:12px;font-weight:700;line-height:18px;color:#04121c}
+  #chainTxt{font-size:12px;color:#ffd76a}
+  #resPanel{position:absolute;top:10px;left:10px;transition:transform .25s;transform-origin:top left}
+  #resPanel.big{left:50%;top:92px;transform:translateX(-50%) scale(1.45);transform-origin:top center;background:rgba(10,14,22,.92)}
+  #resPanel h4{margin:0 0 5px;font-size:12px;font-weight:700;letter-spacing:.4px}
+  #resPanel table{border-collapse:separate;border-spacing:2px}
+  #resPanel td,#resPanel th{padding:2px 5px;text-align:center;font-size:11px;border-radius:3px;white-space:nowrap}
+  #resPanel td.nm{text-align:left;font-weight:600}
+  #resPanel td.weak{background:#19d27a;color:#03170d;font-weight:800}
+  #resPanel td.eff{background:#1f8a4d}
+  #resPanel td.mid{background:#8a7a1f}
+  #resPanel td.bad{background:#8a2a2a}
+  #resPanel td.own{outline:2px solid #fff}
+  #resPanel th.me{background:rgba(255,255,255,.22)}
+  #resPanel tr.mine td.nm{color:#ffd76a}
+  #resPanel .pr{display:inline-block;width:44px;height:7px;background:#1b2230;border-radius:4px;overflow:hidden;vertical-align:middle}
+  #resPanel .pr i{display:block;height:100%;width:0;background:#ff5a4a}
+  #resHint{margin-top:5px;font-size:11px;color:#b9c6da;max-width:330px;white-space:normal}
+  #team{position:absolute;top:10px;right:10px;min-width:200px}
+  #team .row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+  #team .dot{width:10px;height:10px;border-radius:50%}
+  #team .ub{flex:1;height:6px;background:#1b2230;border-radius:3px;overflow:hidden}
+  #team .ub i{display:block;height:100%;background:#c58bff}
+  #mini{position:absolute;right:10px;bottom:10px;border-radius:8px;background:rgba(10,14,22,.72);border:1px solid rgba(255,255,255,.12)}
+  #bottom{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:stretch}
+  .slot{min-width:118px;text-align:center}
+  .slot b{display:block;font-size:10px;color:#8fa0ba;letter-spacing:.6px}
+  .slot span{font-size:13px;font-weight:700}
+  .slot small{display:block;color:#ffd76a;font-size:10px}
+  #bars{min-width:230px}
+  .bar{position:relative;height:12px;background:#1b2230;border-radius:6px;overflow:hidden;margin:3px 0}
+  .bar i{position:absolute;left:0;top:0;bottom:0;width:0}
+  .bar span{position:relative;display:block;font-size:10px;line-height:12px;text-align:center;font-weight:700;text-shadow:0 0 3px #000}
+  #stam i{background:#7bd88f}
+  #ult i{background:linear-gradient(90deg,#8a5bff,#ff7bd5)}
+  #ult.full{box-shadow:0 0 10px #ff7bd5}
+  #info{font-size:11px;color:#b9c6da;margin-top:3px;white-space:nowrap}
+  #info b{color:#fff}
+  #feed{position:absolute;left:10px;bottom:10px;width:330px;font-size:12px;line-height:1.5}
+  #feed div{background:rgba(10,14,22,.6);padding:1px 6px;border-radius:4px;margin-top:2px;width:fit-content}
+  #hint{position:absolute;left:50%;bottom:108px;transform:translateX(-50%);font-size:13px;font-weight:700;color:#ffd76a;text-shadow:0 0 4px #000}
+  #banner{position:absolute;top:26%;left:0;right:0;text-align:center;font-size:40px;font-weight:800;letter-spacing:2px;text-shadow:0 0 14px #000;opacity:0;transition:opacity .3s}
+  #comboBanner{position:absolute;top:60%;left:0;right:0;text-align:center;font-size:24px;font-weight:800;color:#ffd76a;text-shadow:0 0 10px #f60;opacity:0;transition:opacity .2s}
+  #cross{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 3px #000}
+  #popups{position:absolute;inset:0;overflow:hidden}
+  .pop{position:absolute;left:0;top:0;font-weight:800;font-size:13px;text-shadow:0 0 3px #000,0 1px 2px #000;white-space:nowrap;display:none;will-change:transform,opacity}
+  .pop.good{color:#8dffb0}.pop.bad{color:#9aa3b1;font-size:11px}.pop.combo{color:#ffd76a;font-size:17px}
+  #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,7,12,.82);pointer-events:auto}
+  #overlay.hide{display:none}
+  .box{max-width:860px;width:92%;text-align:center}
+  .box h1{margin:0 0 6px;font-size:34px;letter-spacing:1px}
+  .box p{color:#b9c6da;line-height:1.55;margin:6px 0}
+  .keys{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 18px;text-align:left;margin:14px auto;max-width:620px;font-size:13px}
+  .keys b{color:#ffd76a}
+  button.go{pointer-events:auto;margin-top:12px;padding:12px 34px;font-size:17px;font-weight:800;border:0;border-radius:8px;background:#39d0ff;color:#04121c;cursor:pointer}
+  .cards{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+  .card{width:190px;padding:14px 12px;border-radius:10px;background:#141b29;border:2px solid #2b3850;cursor:pointer;text-align:center;transition:transform .12s,border-color .12s}
+  .card:hover{transform:translateY(-5px);border-color:#39d0ff}
+  .card .t{font-size:10px;letter-spacing:1px;color:#8fa0ba}
+  .card .n{font-size:17px;font-weight:800;margin:6px 0}
+  .card .d{font-size:12px;color:#b9c6da;min-height:48px}
+  .card .a{margin-top:8px;font-size:11px;font-weight:800;color:#ffd76a}
+  @media (max-width:900px){#resPanel{transform:scale(.8)}#team{display:none}#feed{display:none}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div id="top" class="panel"><div id="roundTxt">—</div><div id="coreBar"><i></i><span></span></div><div id="chainTxt"></div></div>
+  <div id="resPanel" class="panel"></div>
+  <div id="team" class="panel"></div>
+  <canvas id="mini" width="180" height="180"></canvas>
+  <div id="feed"></div>
+  <div id="hint"></div>
+  <div id="bottom">
+    <div class="panel slot" id="sCore"><b>SİLAH ÇEKİRDEĞİ</b><span></span><small></small></div>
+    <div class="panel slot" id="sMod"><b>MOD</b><span></span><small></small></div>
+    <div class="panel slot" id="sPas"><b>PASİF</b><span></span><small></small></div>
+    <div class="panel" id="bars">
+      <div class="bar" id="stam"><i></i><span>STAMINA</span></div>
+      <div class="bar" id="ult"><i></i><span>ULT</span></div>
+      <div id="info"></div>
+    </div>
+  </div>
+  <div id="banner"></div>
+  <div id="comboBanner"></div>
+  <div id="cross"></div>
+  <div id="popups"></div>
+  <div id="overlay"><div class="box" id="ovBox"></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+/* ============================================================================
+   ALTIGEN REZONANS — tek dosyalık co-op alan savunması prototipi
+   Bölümler: 1 Config/Data · 2 Wave+Resistance Generator · 3 Entities (+pool)
+             4 Combat+Combo · 5 Bot AI · 6 Camera/Input · 7 UI/HUD · 8 Game loop
+   ========================================================================== */
+
+/* ============================ 1. CONFIG / DATA ============================ */
+const CFG = {
+  arena:   { R: 70, coreR: 5, ringR: 17, spawnR: 66, postR: 28, laneHalfW: 12, heroMaxR: 58 },
+  core:    { hp: 100 },
+  rounds:  10, bossRounds: [5, 10], prepTime: 8,
+  player:  { walk: 7.5, sprint: 12.5, stamina: 100, staminaDrain: 20, staminaRegen: 14,
+             towers: 3, foreignTowerLimit: 2, towerMinR: 9, towerMaxR: 56 },
+  resist:  { ownPenalty: 0.6, ownPenaltyChance: 0.8, effectiveMax: 0.3, minEffective: 2,
+             themedBonus: 0.1, weakChance: 0.5, weak: -0.25 },
+  infusion:{ dur: 25, range: 9, giverBuff: 0.25, cdPlayer: 12, cdBot: 26 },
+  combo:   { window: 2.0, icd: 0.9, splash: 0.7 },
+  essence: { perKill: 1, cap: 20, ultPer: 10, selfUlt: 2 },
+  ult:     { need: 100, radius: 16, dmg: 150 },
+  wave:    { baseCount: 8, countPer: 3, baseHp: 60, hpGrowth: 1.34, spawnWindow: 24, speed: 3.2 },
+  flawless:{ dmgPerChain: 0.08, maxChain: 5, extraCards: 1 },
+  bot:     { thinkEvery: 0.8, pressMin: 6, pressRatio: 1.3, helpStay: 6, pingStay: 9, essenceSendAt: 5, maxHelpers: 1 },
+  tower:   { dmg: 9, rate: 1.4, range: 24, speed: 60, turn: 5 },
+  pools:   { creeps: 300, proj: 360, fx: 56, beams: 64, popups: 40 },
+};
+
+const ELEMENTS = {
+  FIRE:      { name: 'Ateş',     color: 0xff5a2a, icon: '🔥' },
+  WATER:     { name: 'Su',       color: 0x3aa0ff, icon: '💧' },
+  EARTH:     { name: 'Toprak',   color: 0xc08a45, icon: '⛰️' },
+  AIR:       { name: 'Hava',     color: 0xbdf3f7, icon: '🌪️' },
+  LIGHTNING: { name: 'Yıldırım', color: 0xffe23a, icon: '⚡' },
+  POISON:    { name: 'Zehir',    color: 0x7ddc3a, icon: '☠️' },
+};
+const EL_KEYS = Object.keys(ELEMENTS);
+
+/* Rezonans kombo tablosu. mult: tetikleyen vuruşun taban hasarı çarpanı (dirençten bağımsız).
+   aoe: yarıçap · chain: sıçrama sayısı · slow/slowDur · stun(sn) · dot(kombo hasarı/sn oranı)/dotDur · vuln(sn, +%30 hasar) */
+const COMBOS = {
+  'FIRE+WATER':       { name: 'Buhar Patlaması', mult: 2.4, aoe: 7 },
+  'WATER+LIGHTNING':  { name: 'İletim',          mult: 2.0, chain: 4 },
+  'EARTH+AIR':        { name: 'Kum Fırtınası',   mult: 1.6, aoe: 8, slow: 0.55, slowDur: 3.5 },
+  'FIRE+POISON':      { name: 'Toksik Alev',     mult: 1.8, dot: 0.9, dotDur: 4 },
+  'FIRE+EARTH':       { name: 'Magma',           mult: 2.2, aoe: 5, slow: 0.3, slowDur: 2 },
+  'FIRE+AIR':         { name: 'Alev Girdabı',    mult: 2.0, aoe: 9 },
+  'FIRE+LIGHTNING':   { name: 'Plazma',          mult: 3.4 },
+  'WATER+EARTH':      { name: 'Bataklık',        mult: 1.5, aoe: 6, slow: 0.7, slowDur: 3 },
+  'WATER+AIR':        { name: 'Buz Fırtınası',   mult: 1.7, aoe: 5, stun: 1.3 },
+  'WATER+POISON':     { name: 'Asit Yağmuru',    mult: 1.6, aoe: 6, vuln: 5 },
+  'EARTH+LIGHTNING':  { name: 'Manyetik Şok',    mult: 2.0, stun: 1.6 },
+  'EARTH+POISON':     { name: 'Çürüme',          mult: 1.6, dot: 0.6, dotDur: 4, vuln: 4 },
+  'AIR+LIGHTNING':    { name: 'Fırtına',         mult: 1.8, chain: 5 },
+  'AIR+POISON':       { name: 'Zehir Bulutu',    mult: 1.5, aoe: 8, dot: 0.5, dotDur: 4 },
+  'LIGHTNING+POISON': { name: 'Nörotoksin',      mult: 1.9, stun: 1.0, dot: 0.6, dotDur: 3 },
+};
+const comboKey = (a, b) => EL_KEYS.indexOf(a) < EL_KEYS.indexOf(b) ? a + '+' + b : b + '+' + a;
+
+/* Silah çekirdekleri. kind: proj | beam | chain */
+const CORES = {
+  single:  { name: 'Tek Hedef', kind: 'proj',  dmg: 14,  rate: 2.6, range: 36, speed: 70, desc: 'Hızlı, isabetli tek mermi.' },
+  arc:     { name: 'Yay AoE',   kind: 'proj',  dmg: 17,  rate: 1.1, range: 34, speed: 40, aoe: 5.5, desc: 'Çarptığı yerde alan hasarı (%60 sıçrama).' },
+  beam:    { name: 'Işın',      kind: 'beam',  dmg: 4.2, rate: 9,   range: 30, desc: 'Kesintisiz ışın, çok sık vuruş.' },
+  chain:   { name: 'Zincir',    kind: 'chain', dmg: 13,  rate: 1.5, range: 30, jumps: 3, falloff: 0.75, jumpR: 10, desc: '3 hedefe sıçrayan şimşek.' },
+  scatter: { name: 'Saçma',     kind: 'proj',  dmg: 6,   rate: 1.5, range: 20, speed: 60, pellets: 6, spread: 0.5, desc: 'Yakın mesafe 6 saçma.' },
+};
+/* Modlar. Seviye başına sayısal değerler ölçeklenir (bkz. calcStats). */
+const MODS = {
+  pierce:   { name: 'Delici',      pierce: 2, desc: 'Mermi 2 hedefi deler (ışın: hat boyunca, zincir: +sıçrama).' },
+  ricochet: { name: 'Sekme',       bounce: 2, desc: 'Vuruş 2 kez yakın hedefe seker.' },
+  multi:    { name: 'Çoklu Atış',  extra: 2, extraEff: 0.33, desc: '+2 mermi/hedef, mermi başı hasar düşer (toplam +%65).' },
+  dot:      { name: 'Yakıcı (DoT)',dotPct: 0.5, dotDur: 3, desc: '3 sn boyunca vuruşun %50\'si/sn ek hasar.' },
+  slow:     { name: 'Yavaşlatma',  slow: 0.35, slowDur: 1.5, desc: 'Vurulan hedef %35 yavaşlar.' },
+  homing:   { name: 'Güdümlü',     turn: 6, rangeMul: 1.2, desc: 'Mermiler hedefi takip eder, menzil +%20.' },
+};
+/* Pasifler. Değerler seviye ile çarpılır. */
+const PASSIVES = {
+  power:     { name: 'Güç',        dmg: 0.2,  desc: 'Hasar +%20 / sv.' },
+  haste:     { name: 'Çabukluk',   rate: 0.18, desc: 'Atış hızı +%18 / sv.' },
+  reach:     { name: 'Uzun Menzil',range: 0.2, desc: 'Menzil +%20 / sv.' },
+  harvest:   { name: 'Hasatçı',    essence: 1.0, desc: 'Öldürme başına +1 öz / sv.' },
+  engineer:  { name: 'Mühendis',   towers: 1, towerDmg: 0.25, desc: '+1 kule ve kule hasarı +%25 / sv.' },
+  resonator: { name: 'Rezonatör',  combo: 0.35, desc: 'Kombo hasarı +%35 / sv.' },
+  conduit:   { name: 'İletken',    infDur: 10, infBuff: 0.15, desc: 'Aşılama +10 sn, veren buff\'ı +%15 / sv.' },
+  athlete:   { name: 'Atlet',      stamina: 0.5, speed: 0.1, desc: 'Stamina +%50, hız +%10 / sv.' },
+};
+const LVL = { coreDmg: 0.22, mod: 0.5, modSlow: 0.25 };   // seviye başı ölçekler
+
+const CREEPS = {
+  grunt:  { hp: 1,   speed: 1,    leak: 1,  radius: 0.9, essence: 1,  scale: 1 },
+  runner: { hp: 0.6, speed: 1.6,  leak: 1,  radius: 0.8, essence: 1,  scale: 0.85 },
+  tank:   { hp: 2.6, speed: 0.7,  leak: 2,  radius: 1.2, essence: 2,  scale: 1 },
+  boss:   { hp: 32,  speed: 0.5,  leak: 30, radius: 3.0, essence: 15, scale: 3.2 },
+};
+
+/* ------------------------------ yardımcılar ------------------------------ */
+const TAU = Math.PI * 2, SEC = TAU / 6;
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const laneAng = i => (i + 0.5) * SEC;
+const laneDir = i => [Math.sin(laneAng(i)), Math.cos(laneAng(i))];
+function sectorOf(x, z) { let a = Math.atan2(x, z); if (a < 0) a += TAU; return Math.min(5, Math.floor(a / SEC)); }
+const QS = new URLSearchParams(location.search);
+const AUTO = QS.has('auto');              // ?auto → insan oyuncuyu da bot oynar (denge testi)
+
+/* ------------------------------- oyun durumu ----------------------------- */
+const G = {
+  state: 'menu', round: 0, time: 0, stateT: 0, waveT: 0,
+  coreHp: CFG.core.hp, chain: 0, roundLeaks: 0, extraCard: false,
+  players: [], human: null, towers: [], creeps: [], projs: [], fxs: [], beams: [],
+  resist: [], spawnQ: [], pressure: [0, 0, 0, 0, 0, 0], helpers: [0, 0, 0, 0, 0, 0],
+  ping: null, autoFire: true, roundHp: 30,
+  stats: { combos: 0, infusions: 0, flawless: 0, leaks: 0 },
+};
+
+/* ===================== 2. WAVE + RESISTANCE GENERATOR ===================== */
+function countEffective(row) { let n = 0; for (const k of EL_KEYS) if (row[k] < CFG.resist.effectiveMax) n++; return n; }
+
+/* Her kenar için {element: direnç} satırı üretir.
+   - Kenar sahibinin elementi çoğu turda ownPenalty (%60) dirençle karşılanır.
+   - Denge kuralı: her kenarda en az minEffective (2) element < %30 direnç. */
+function genResistance() {
+  const R = CFG.resist, map = [];
+  const r5 = v => Math.round(v * 20) / 20;
+  for (let e = 0; e < 6; e++) {
+    const own = G.players[e].el;
+    let row, tries = 0;
+    do {
+      row = {};
+      const penal = Math.random() < R.ownPenaltyChance;
+      row[own] = penal ? R.ownPenalty + (Math.random() < 0.5 ? R.themedBonus : 0) : r5(rand(0.1, 0.5));
+      const others = shuffle(EL_KEYS.filter(k => k !== own));
+      const nEff = R.minEffective + (Math.random() < 0.4 ? 1 : 0);
+      others.forEach((k, i) => {
+        if (i < nEff) row[k] = (i === 0 && Math.random() < R.weakChance) ? R.weak : r5(rand(0, 0.25));
+        else row[k] = r5(rand(0.35, 0.75));
+      });
+    } while (countEffective(row) < R.minEffective && ++tries < 20);
+    map.push(row);
+  }
+  return map;
+}
+
+function genWave(round) {
+  const W = CFG.wave, q = [], n = Math.round(W.baseCount + W.countPer * round);
+  for (let e = 0; e < 6; e++) for (let i = 0; i < n; i++) {
+    const r = Math.random();
+    let type = 'grunt';
+    if (round >= 3 && r < 0.12 + round * 0.012) type = 'tank';
+    else if (round >= 2 && r < 0.4) type = 'runner';
+    q.push({ t: 1 + (i / n) * W.spawnWindow * (1 + round * 0.03) + Math.random() * 1.5, lane: e, type });
+  }
+  if (CFG.bossRounds.includes(round)) {
+    const l = Math.random() * 6 | 0;
+    (round >= CFG.rounds ? [l, (l + 3) % 6] : [l]).forEach(x => q.push({ t: 8, lane: x, type: 'boss' }));
+  }
+  q.sort((a, b) => b.t - a.t);            // sondan pop edilir
+  return q;
+}
+
+/* ============================== 3. ENTITIES =============================== */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0d14);
+scene.fog = new THREE.Fog(0x0a0d14, 90, 210);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 400);
+scene.add(new THREE.HemisphereLight(0xbfd6ff, 0x1a1410, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(40, 80, 20); scene.add(sun);
+
+const mat = (color, emissive) => new THREE.MeshPhongMaterial({ color, emissive: emissive || 0x000000, flatShading: true, shininess: 10 });
+const glow = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: opacity == null ? 1 : opacity, depthWrite: false, blending: THREE.AdditiveBlending });
+
+const GEO = {
+  grunt: new THREE.OctahedronGeometry(0.95), runner: new THREE.TetrahedronGeometry(1.0),
+  tank: new THREE.BoxGeometry(1.6, 1.6, 1.6), boss: new THREE.IcosahedronGeometry(1, 0),
+  bar: new THREE.PlaneGeometry(1.8, 0.2), proj: new THREE.IcosahedronGeometry(0.35, 0),
+  fx: new THREE.SphereGeometry(1, 12, 6), beam: new THREE.BoxGeometry(1, 1, 1),
+  body: new THREE.CylinderGeometry(0.45, 0.8, 1.8, 6), head: new THREE.IcosahedronGeometry(0.45, 0),
+  ring: new THREE.TorusGeometry(1.1, 0.12, 4, 14), aura: new THREE.TorusGeometry(1.7, 0.16, 4, 16),
+  tBase: new THREE.CylinderGeometry(0.7, 1.0, 2.2, 6), tTop: new THREE.OctahedronGeometry(0.7),
+};
+const ELMAT = {}; EL_KEYS.forEach(k => ELMAT[k] = new THREE.MeshBasicMaterial({ color: ELEMENTS[k].color }));
+const BARMAT = new THREE.MeshBasicMaterial({ color: 0x6dff8a, depthTest: false });
+
+class Pool {
+  constructor(n, make) { this.free = []; for (let i = 0; i < n; i++) this.free.push(make(i)); }
+  get() { return this.free.pop() || null; }
+  put(o) { this.free.push(o); }
+}
+
+function makeLabel(text, color) {
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+  const g = cv.getContext('2d'); g.font = 'bold 34px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 6; g.strokeStyle = '#000'; g.strokeText(text, 128, 32); g.fillStyle = color; g.fillText(text, 128, 32);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false }));
+  s.scale.set(6, 1.5, 1); return s;
+}
+const hex = c => '#' + c.toString(16).padStart(6, '0');
+
+/* --------------------------------- arena --------------------------------- */
+let coreMesh;
+function buildArena() {
+  const A = CFG.arena;
+  const ground = new THREE.Mesh(new THREE.CylinderGeometry(A.R, A.R, 1, 6), mat(0x1c2433)); ground.position.y = -0.5; scene.add(ground);
+  const under = new THREE.Mesh(new THREE.CircleGeometry(260, 24), new THREE.MeshBasicMaterial({ color: 0x07090e })); under.rotation.x = -Math.PI / 2; under.position.y = -0.6; scene.add(under);
+  for (let i = 0; i < 6; i++) {
+    const p = G.players[i], col = ELEMENTS[p.el].color;
+    const a0 = i * SEC, a1 = (i + 1) * SEC;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0.03, 0, Math.sin(a0) * A.R, 0.03, Math.cos(a0) * A.R, Math.sin(a1) * A.R, 0.03, Math.cos(a1) * A.R], 3));
+    scene.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false })));
+    const pil = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.6, 9, 6), mat(0x2a3448)); pil.position.set(Math.sin(a0) * A.R, 4.5, Math.cos(a0) * A.R); scene.add(pil);
+    const lg = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0.05, 0), new THREE.Vector3(Math.sin(a0) * A.R, 0.05, Math.cos(a0) * A.R)]);
+    scene.add(new THREE.Line(lg, new THREE.LineBasicMaterial({ color: 0x3a4660 })));
+    const d = laneDir(i);
+    const lab = makeLabel(ELEMENTS[p.el].icon + ' ' + p.name, hex(col)); lab.scale.set(14, 3.5, 1); lab.position.set(d[0] * 62, 7, d[1] * 62); scene.add(lab);
+    const gate = new THREE.Mesh(new THREE.BoxGeometry(CFG.arena.laneHalfW * 2, 0.3, 0.6), glow(col, 0.7)); gate.position.set(d[0] * 60.4, 0.2, d[1] * 60.4); gate.rotation.y = laneAng(i); scene.add(gate);
+  }
+  const ring = new THREE.Mesh(new THREE.RingGeometry(A.ringR - 0.35, A.ringR + 0.35, 48), new THREE.MeshBasicMaterial({ color: 0x9fb4d6, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; scene.add(ring);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(A.coreR, A.coreR + 1, 1.2, 6), mat(0x2a3448)); base.position.y = 0.6; scene.add(base);
+  coreMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(2.6, 0), mat(0x39d0ff, 0x1a7fa8)); coreMesh.position.y = 4.4; scene.add(coreMesh);
+  const pl = new THREE.PointLight(0x39d0ff, 1.2, 60); pl.position.y = 6; scene.add(pl);
+}
+
+/* -------------------------------- oyuncular ------------------------------ */
+function makePlayer(id, el) {
+  const d = laneDir(id), col = ELEMENTS[el].color;
+  const p = {
+    id, isBot: id !== 0 || AUTO, name: id === 0 ? 'SEN' : 'Bot ' + id, el, edge: id,
+    x: d[0] * CFG.arena.postR, z: d[1] * CFG.arena.postR, faceYaw: laneAng(id),
+    build: { core: 'single', coreLvl: 1, mod: null, modLvl: 1, passive: null, passiveLvl: 1 },
+    stats: {}, modv: {}, cd: 0, essence: 0, ult: 0, infEl: null, infT: 0, flip: false, buffT: 0, infCd: 0,
+    stamina: CFG.player.stamina, exhausted: false, towers: [], kills: 0, dmgDone: 0, combos: 0,
+    ai: { state: 'home', think: Math.random(), helpEdge: -1, stayT: 0, ping: false, ox: rand(-3, 3) },
+  };
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(GEO.body, mat(0x2b3243, col)); body.material.emissiveIntensity = 0.45; body.position.y = 0.9; g.add(body);
+  const head = new THREE.Mesh(GEO.head, mat(col, col)); head.material.emissiveIntensity = 0.4; head.position.y = 2.2; g.add(head);
+  const gun = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 1.3), mat(col, col)); gun.position.set(0.55, 1.3, 0.55); g.add(gun);
+  const ring = new THREE.Mesh(GEO.ring, new THREE.MeshBasicMaterial({ color: col })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.1; g.add(ring);
+  p.aura = new THREE.Mesh(GEO.aura, glow(0xffffff, 0.9)); p.aura.rotation.x = Math.PI / 2; p.aura.position.y = 0.25; p.aura.visible = false; g.add(p.aura);
+  p.label = makeLabel(p.name, hex(col)); p.label.position.y = 3.6; p.label.scale.set(4.5, 1.1, 1); g.add(p.label);
+  p.mesh = g; scene.add(g);
+  calcStats(p);
+  return p;
+}
+
+function calcStats(p) {
+  const b = p.build, ps = b.passive ? PASSIVES[b.passive] : {}, pv = k => (ps[k] || 0) * b.passiveLvl, s = p.stats;
+  s.dmg = (1 + LVL.coreDmg * (b.coreLvl - 1)) * (1 + pv('dmg'));
+  s.rate = 1 + pv('rate'); s.range = 1 + pv('range'); s.combo = 1 + pv('combo');
+  s.essence = pv('essence'); s.towers = CFG.player.towers + Math.round(pv('towers')); s.towerDmg = 1 + pv('towerDmg');
+  s.infDur = CFG.infusion.dur + pv('infDur'); s.infBuff = CFG.infusion.giverBuff + pv('infBuff');
+  s.stamina = 1 + pv('stamina'); s.speed = 1 + pv('speed');
+  const m = b.mod ? MODS[b.mod] : {}, ml = 1 + LVL.mod * (b.modLvl - 1);
+  p.modv = {
+    pierce: Math.round((m.pierce || 0) * ml), bounce: Math.round((m.bounce || 0) * ml),
+    extra: m.extra ? m.extra + (b.modLvl - 1) : 0, extraEff: m.extraEff || 0,
+    dotPct: (m.dotPct || 0) * ml, dotDur: m.dotDur || 0,
+    slow: Math.min(0.7, (m.slow || 0) * (1 + LVL.modSlow * (b.modLvl - 1))), slowDur: m.slowDur || 0,
+    turn: (m.turn || 0) * ml, rangeMul: m.rangeMul || 1,
+  };
+}
+const heroRange = p => CORES[p.build.core].range * p.stats.range * p.modv.rangeMul;
+const dmgMult = p => (p.buffT > 0 ? 1 + p.stats.infBuff : 1) * (1 + G.chain * CFG.flawless.dmgPerChain);
+/* Aşılıysa atışlar kendi element / aşı elementi arasında dönüşümlü gider → tek başına bile rezonans kurar. */
+function shotEl(ent, ownEl) { if (ent.infT > 0) { ent.flip = !ent.flip; return ent.flip ? ent.infEl : ownEl; } return ownEl; }
+
+/* --------------------------------- kuleler -------------------------------- */
+function makeTower(owner) {
+  const col = ELEMENTS[owner.el].color, g = new THREE.Group();
+  const base = new THREE.Mesh(GEO.tBase, mat(0x39445c)); base.position.y = 1.1; g.add(base);
+  const top = new THREE.Mesh(GEO.tTop, mat(col, col)); top.material.emissiveIntensity = 0.6; top.position.y = 2.9; g.add(top);
+  const aura = new THREE.Mesh(GEO.ring, glow(0xffffff, 0.9)); aura.rotation.x = Math.PI / 2; aura.position.y = 0.2; aura.visible = false; g.add(aura);
+  scene.add(g);
+  return { owner, x: 0, z: 0, edge: 0, cd: Math.random(), infEl: null, infT: 0, flip: false, mesh: g, top, aura };
+}
+/* Kule yerleştir. Limit doluysa en eski kule taşınır. Başkasının kenarında oyuncu başına en çok 2 kule. */
+function placeTower(p, x, z) {
+  const P = CFG.player, r = Math.hypot(x, z);
+  if (r < P.towerMinR || r > P.towerMaxR) return 'Buraya kule konmaz (çekirdek/kenar dışı).';
+  const edge = sectorOf(x, z), full = p.towers.length >= p.stats.towers, oldest = full ? p.towers[0] : null;
+  if (edge !== p.edge) {
+    let n = 0; for (const t of p.towers) if (t.edge === edge && t !== oldest) n++;
+    if (n >= P.foreignTowerLimit) return 'Başkasının kenarında kule limiti ' + P.foreignTowerLimit + '.';
+  }
+  for (const t of G.towers) if (t !== oldest && Math.hypot(t.x - x, t.z - z) < 2.2) return 'Burada zaten kule var.';
+  let t;
+  if (full) { t = p.towers.shift(); } else { t = makeTower(p); G.towers.push(t); }
+  t.x = x; t.z = z; t.edge = edge; t.mesh.position.set(x, 0, z); p.towers.push(t);
+  spawnFx(x, 0.5, z, 3, ELEMENTS[p.el].color, 0.35);
+  return null;
+}
+
+/* -------------------------------- yaratıklar ------------------------------ */
+const creepPool = new Pool(CFG.pools.creeps, () => {
+  const g = new THREE.Group(), body = new THREE.Mesh(GEO.grunt, mat(0x888888)), bar = new THREE.Mesh(GEO.bar, BARMAT);
+  bar.renderOrder = 5; g.add(body); g.add(bar); g.visible = false; scene.add(g);
+  return { mesh: g, body, bar, active: false, hit: [] };
+});
+function spawnCreep(lane, type) {
+  const c = creepPool.get(); if (!c) return;
+  const T = CREEPS[type], d = laneDir(lane), off = rand(-CFG.arena.laneHalfW, CFG.arena.laneHalfW), R = CFG.arena.spawnR + rand(0, 4);
+  c.active = true; c.type = type; c.lane = lane; c.res = G.resist[lane];
+  c.x = d[0] * R + d[1] * off; c.z = d[1] * R - d[0] * off; c.d = R;
+  c.maxHp = c.hp = G.roundHp * T.hp; c.speed = CFG.wave.speed * T.speed * rand(0.92, 1.08);
+  c.radius = T.radius; c.leak = T.leak; c.ess = T.essence; c.h = type === 'boss' ? 7.5 : 2.4;
+  c.slowT = c.slowF = c.stunT = c.dotT = c.dotDps = c.vulnT = c.comboCd = c.popAcc = c.popNext = 0;
+  c.markEl = null; c.markT = -9; c.dotOwner = null; c.popEl = null; c.spin = rand(0, 6);
+  // dalga rengi: bu kenarın en dirençli olduğu element → "ateşe dirençli dalga" kırmızımsı görünür
+  let top = EL_KEYS[0]; for (const k of EL_KEYS) if (c.res[k] > c.res[top]) top = k;
+  c.body.geometry = GEO[type]; c.body.scale.setScalar(T.scale); c.body.position.y = type === 'boss' ? 3.6 : 1.1;
+  c.body.material.color.setHex(ELEMENTS[top].color).multiplyScalar(type === 'boss' ? 0.9 : 0.6); c.body.material.emissive.setHex(0);
+  c.bar.position.y = c.h; c.bar.scale.set(type === 'boss' ? 4 : 1, type === 'boss' ? 2 : 1, 1);
+  c.mesh.position.set(c.x, 0, c.z); c.mesh.visible = true;
+  G.creeps.push(c);
+  if (type === 'boss') { banner('⚠ BOSS — ' + G.players[lane].name + ' kenarı', '#ff6a5a'); feed('Boss <b>' + G.players[lane].name + '</b> kenarından geliyor!'); }
+}
+function removeCreep(c) { c.active = false; c.mesh.visible = false; }
+
+/* ------------------------- mermi / efekt havuzları ------------------------ */
+const projPool = new Pool(CFG.pools.proj, () => { const m = new THREE.Mesh(GEO.proj, ELMAT.FIRE); m.visible = false; scene.add(m); return { mesh: m, hit: [] }; });
+function spawnProj(owner, x, z, ux, uz, speed, dmg, el, life, o) {
+  const a = projPool.get(); if (!a) return;
+  a.owner = owner; a.x = x; a.z = z; a.vx = ux * speed; a.vz = uz * speed; a.speed = speed; a.dmg = dmg; a.el = el; a.life = life;
+  a.pierce = o.pierce || 0; a.bounce = o.bounce || 0; a.aoe = o.aoe || 0; a.turn = o.turn || 0; a.target = o.target || null; a.fx = o.fx || null;
+  a.r = a.aoe ? 0.8 : 0.5; a.hit.length = 0;
+  a.mesh.material = ELMAT[el]; a.mesh.scale.setScalar(a.aoe ? 2 : (o.small ? 0.7 : 1)); a.mesh.position.set(x, 1.4, z); a.mesh.visible = true;
+  G.projs.push(a);
+}
+const fxPool = new Pool(CFG.pools.fx, () => { const m = new THREE.Mesh(GEO.fx, glow(0xffffff, 0.5)); m.visible = false; scene.add(m); return { mesh: m }; });
+function spawnFx(x, y, z, radius, color, life) {
+  const f = fxPool.get(); if (!f) return;
+  f.t = 0; f.life = life || 0.4; f.r = radius; f.orb = null;
+  f.mesh.material.color.setHex(color); f.mesh.position.set(x, y, z); f.mesh.scale.setScalar(0.1); f.mesh.visible = true; G.fxs.push(f);
+}
+function spawnOrb(from, to, color) {      // öz transferi görseli
+  const f = fxPool.get(); if (!f) return;
+  f.t = 0; f.life = 0.6; f.r = 0.6; f.orb = { fx: from.x, fz: from.z, to };
+  f.mesh.material.color.setHex(color); f.mesh.material.opacity = 1; f.mesh.scale.setScalar(0.6); f.mesh.visible = true; G.fxs.push(f);
+}
+const beamPool = new Pool(CFG.pools.beams, () => { const m = new THREE.Mesh(GEO.beam, glow(0xffffff, 1)); m.visible = false; scene.add(m); return { mesh: m }; });
+function spawnBeam(x1, y1, z1, x2, y2, z2, color, w) {
+  const b = beamPool.get(); if (!b) return;
+  const dx = x2 - x1, dy = y2 - y1, dz = z2 - z1, len = Math.hypot(dx, dy, dz) || 0.01;
+  b.t = 0.12; b.mesh.material.color.setHex(color); b.mesh.material.opacity = 1;
+  b.mesh.position.set((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2); b.mesh.scale.set(w || 0.16, w || 0.16, len);
+  b.mesh.lookAt(x2, y2, z2); b.mesh.visible = true; G.beams.push(b);
+}
+
+/* ============================ 4. COMBAT + COMBO =========================== */
+function nearestCreep(x, z, maxR, exclude) {
+  let best = null, bd = maxR * maxR;
+  for (const c of G.creeps) { if (!c.active || (exclude && exclude.includes(c))) continue; const dx = c.x - x, dz = c.z - z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = c; } }
+  return best;
+}
+function mostAdvanced(x, z, maxR) {        // menzildeki, çekirdeğe en yakın yaratık
+  let best = null, bd = 1e9; const r2 = maxR * maxR;
+  for (const c of G.creeps) { if (!c.active) continue; const dx = c.x - x, dz = c.z - z; if (dx * dx + dz * dz < r2 && c.d < bd) { bd = c.d; best = c; } }
+  return best;
+}
+function addSlow(c, f, dur) { if (c.slowT <= 0) c.slowF = 0; c.slowF = Math.max(c.slowF, f); c.slowT = Math.max(c.slowT, dur); }
+
+function damageCreep(owner, c, d, el, label) {
+  if (!c.active) return;
+  c.hp -= d; owner.dmgDone += d;
+  if (label) popup(c.x, c.h + 0.6, c.z, label + ' ' + Math.round(d), 'combo');
+  else if (owner === G.human) { c.popAcc += d; c.popEl = el; }
+  if (c.hp <= 0) killCreep(owner, c);
+}
+function killCreep(owner, c) {
+  if (c.popAcc >= 1) flushPopup(c);
+  removeCreep(c);
+  owner.kills++;
+  owner.essence = Math.min(CFG.essence.cap, owner.essence + (CFG.essence.perKill + owner.stats.essence) * c.ess);
+  owner.ult = Math.min(CFG.ult.need, owner.ult + CFG.essence.selfUlt * c.ess);
+  spawnFx(c.x, 1.2, c.z, c.radius * 2.2, 0xffffff, 0.25);
+}
+function flushPopup(c) {
+  const r = c.popEl ? c.res[c.popEl] : 0;
+  popup(c.x, c.h, c.z, Math.round(c.popAcc) + (r >= 0.6 ? ' dirençli' : ''), r < CFG.resist.effectiveMax ? 'good' : r >= 0.6 ? 'bad' : '');
+  c.popAcc = 0; c.popNext = G.time + 0.35;
+}
+
+/* Tek vuruş: direnç uygula, mod etkilerini işle, rezonans işaretini kontrol et. */
+function applyHit(owner, c, dmg, el, fx) {
+  if (!c.active) return;
+  const res = c.res[el];
+  let d = dmg * (1 - res); if (c.vulnT > 0) d *= 1.3;
+  if (fx) {
+    if (fx.dotPct > 0) { c.dotDps = Math.max(c.dotT > 0 ? c.dotDps : 0, dmg * fx.dotPct * (1 - res)); c.dotT = fx.dotDur; c.dotOwner = owner; }
+    if (fx.slow > 0) addSlow(c, fx.slow * (c.type === 'boss' ? 0.5 : 1), fx.slowDur);
+  }
+  if (c.markEl && c.markEl !== el && G.time - c.markT <= CFG.combo.window && G.time >= c.comboCd) {
+    const a = c.markEl; c.markEl = null; c.comboCd = G.time + CFG.combo.icd;
+    triggerCombo(owner, c, a, el, dmg);
+  } else { c.markEl = el; c.markT = G.time; }
+  damageCreep(owner, c, d, el, null);
+}
+
+const _victims = [];
+function comboStatus(owner, c, def, dmg) {
+  const boss = c.type === 'boss';
+  if (def.slow) addSlow(c, def.slow * (boss ? 0.5 : 1), def.slowDur);
+  if (def.stun) c.stunT = Math.max(c.stunT, def.stun * (boss ? 0.3 : 1));
+  if (def.dot) { c.dotDps = Math.max(c.dotT > 0 ? c.dotDps : 0, dmg * def.dot); c.dotT = def.dotDur; c.dotOwner = owner; }
+  if (def.vuln) c.vulnT = Math.max(c.vulnT, def.vuln);
+}
+/* Rezonans kombosu: 2 sn içinde aynı hedefe 2 farklı element. Hasar dirençten bağımsızdır. */
+function triggerCombo(owner, c, elA, elB, baseDmg) {
+  const def = COMBOS[comboKey(elA, elB)]; if (!def) return;
+  const dmg = baseDmg * def.mult * owner.stats.combo;
+  const colA = ELEMENTS[elA].color, colB = ELEMENTS[elB].color;
+  G.stats.combos++; owner.combos++;
+  if (owner === G.human) comboBanner(def.name + '!');
+  spawnFx(c.x, 1.5, c.z, def.aoe || 3, colA, 0.45); spawnFx(c.x, 1.5, c.z, (def.aoe || 3) * 0.7, colB, 0.35);
+  _victims.length = 0;
+  if (def.aoe) { const r2 = def.aoe * def.aoe; for (const o of G.creeps) if (o.active && o !== c) { const dx = o.x - c.x, dz = o.z - c.z; if (dx * dx + dz * dz < r2) _victims.push(o); } }
+  if (def.chain) {
+    let cur = c;
+    for (let i = 0; i < def.chain; i++) {
+      let best = null, bd = 144;
+      for (const o of G.creeps) { if (!o.active || o === c || _victims.includes(o)) continue; const dx = o.x - cur.x, dz = o.z - cur.z, dd = dx * dx + dz * dz; if (dd < bd) { bd = dd; best = o; } }
+      if (!best) break;
+      spawnBeam(cur.x, 1.5, cur.z, best.x, 1.5, best.z, colB, 0.22); _victims.push(best); cur = best;
+    }
+  }
+  for (const o of _victims) { comboStatus(owner, o, def, dmg); damageCreep(owner, o, dmg * CFG.combo.splash, null, null); }
+  comboStatus(owner, c, def, dmg);
+  damageCreep(owner, c, dmg, null, def.name);
+}
+
+/* ---------------------------- hero silah ateşi ---------------------------- */
+function fireHero(p, tgt) {
+  const core = CORES[p.build.core], m = p.modv, el = shotEl(p, p.el), col = ELEMENTS[el].color;
+  const range = heroRange(p);
+  const n0 = core.pellets || 1, n = n0 + m.extra;
+  const dmg = core.dmg * p.stats.dmg * dmgMult(p) * (m.extra ? (n0 + m.extra * m.extraEff) / n : 1);
+  let dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1;
+  p.faceYaw = Math.atan2(dx, dz);
+  if (core.kind === 'proj') {
+    // basit önleme: yaratık çekirdeğe doğru yürür
+    const tt = d / core.speed, sp = tgt.stunT > 0 ? 0 : tgt.speed * (tgt.slowT > 0 ? 1 - tgt.slowF : 1), cd = tgt.d || 1;
+    dx = tgt.x - tgt.x / cd * sp * tt - p.x; dz = tgt.z - tgt.z / cd * sp * tt - p.z; d = Math.hypot(dx, dz) || 1;
+    const ang = Math.atan2(dx, dz), spread = core.spread || 0.11 * (n - 1);
+    for (let i = 0; i < n; i++) {
+      const a = ang + (n > 1 ? (i / (n - 1) - 0.5) * spread : 0);
+      spawnProj(p, p.x, p.z, Math.sin(a), Math.cos(a), core.speed, dmg, el, range / core.speed * 1.15,
+        { pierce: m.pierce, bounce: m.bounce, aoe: core.aoe, turn: m.turn, target: tgt, fx: m, small: !!core.pellets });
+    }
+  } else {
+    // anlık vuruşlar (ışın / zincir): çoklu atış → ek hedefler
+    _tg.length = 0; _tg.push(tgt);
+    for (let i = 0; i < m.extra; i++) { const o = nearestCreepIn(p.x, p.z, range, _tg); if (!o) break; _tg.push(o); }
+    for (let i = 0; i < _tg.length; i++) {
+      const t = _tg[i];
+      if (core.kind === 'beam') beamHit(p, t, dmg, el, col, range);
+      else chainHit(p, t, dmg, el, col, core.jumps + m.bounce + m.pierce, core.falloff, core.jumpR);
+    }
+  }
+}
+const _tg = [], _vis = [];
+function nearestCreepIn(x, z, r, ex) { return nearestCreep(x, z, r, ex); }
+function beamHit(p, t, dmg, el, col, range) {
+  const m = p.modv;
+  spawnBeam(p.x, 1.5, p.z, t.x, 1.2, t.z, col, 0.2);
+  if (m.pierce > 0) {                       // delici ışın: hat üzerindeki herkese %60
+    const dx = t.x - p.x, dz = t.z - p.z, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d; let left = m.pierce;
+    for (const o of G.creeps) {
+      if (!o.active || o === t || left <= 0) continue;
+      const ox = o.x - p.x, oz = o.z - p.z, along = ox * ux + oz * uz;
+      if (along > 0 && along < range && Math.abs(ox * uz - oz * ux) < o.radius + 0.8) { applyHit(p, o, dmg * 0.6, el, m); left--; }
+    }
+  }
+  let cur = t; _vis.length = 0; _vis.push(t);
+  for (let i = 0; i < m.bounce; i++) {       // seken ışın
+    const o = nearestCreep(cur.x, cur.z, 9, _vis); if (!o) break;
+    spawnBeam(cur.x, 1.2, cur.z, o.x, 1.2, o.z, col, 0.14); applyHit(p, o, dmg * 0.6, el, m); _vis.push(o); cur = o;
+  }
+  applyHit(p, t, dmg, el, m);
+}
+function chainHit(p, first, dmg, el, col, jumps, falloff, jumpR) {
+  let px = p.x, pz = p.z, cur = first, d = dmg; _vis.length = 0;
+  for (let i = 0; i <= jumps && cur; i++) {
+    spawnBeam(px, 1.5, pz, cur.x, 1.3, cur.z, col, 0.2);
+    _vis.push(cur); px = cur.x; pz = cur.z;
+    const next = nearestCreep(px, pz, jumpR, _vis);
+    applyHit(p, cur, d, el, p.modv);
+    d *= falloff; cur = next;
+  }
+}
+
+/* ------------------------------ mermi güncelle ---------------------------- */
+function updateProjectiles(dt) {
+  const L = G.projs;
+  for (let i = L.length - 1; i >= 0; i--) {
+    const a = L[i]; let dead = false;
+    if (a.turn > 0) {
+      let t = a.target; if (!t || !t.active || a.hit.includes(t)) t = a.target = nearestCreep(a.x, a.z, 18, a.hit);
+      if (t) {
+        const dx = t.x - a.x, dz = t.z - a.z, d = Math.hypot(dx, dz) || 1, k = Math.min(1, a.turn * dt);
+        a.vx += (dx / d * a.speed - a.vx) * k; a.vz += (dz / d * a.speed - a.vz) * k;
+        const s = Math.hypot(a.vx, a.vz) || 1; a.vx = a.vx / s * a.speed; a.vz = a.vz / s * a.speed;
+      }
+    }
+    a.x += a.vx * dt; a.z += a.vz * dt; a.life -= dt;
+    if (a.life <= 0) dead = true;
+    else for (const c of G.creeps) {
+      if (!c.active) continue;
+      const dx = c.x - a.x, dz = c.z - a.z, rr = c.radius + a.r;
+      if (dx * dx + dz * dz > rr * rr || a.hit.includes(c)) continue;
+      applyHit(a.owner, c, a.dmg, a.el, a.fx);
+      if (a.aoe) {
+        spawnFx(a.x, 1.2, a.z, a.aoe, ELEMENTS[a.el].color, 0.3);
+        const r2 = a.aoe * a.aoe;
+        for (const o of G.creeps) if (o.active && o !== c) { const ex = o.x - a.x, ez = o.z - a.z; if (ex * ex + ez * ez < r2) applyHit(a.owner, o, a.dmg * 0.6, a.el, a.fx); }
+      }
+      a.hit.push(c);
+      if (a.pierce > 0) { a.pierce--; continue; }
+      if (a.bounce > 0) {
+        a.bounce--; const n = nearestCreep(a.x, a.z, 14, a.hit);
+        if (n) { const ex = n.x - a.x, ez = n.z - a.z, d = Math.hypot(ex, ez) || 1; a.vx = ex / d * a.speed; a.vz = ez / d * a.speed; a.target = n; a.life = Math.max(a.life, 0.5); break; }
+      }
+      dead = true; break;
+    }
+    if (dead) { a.mesh.visible = false; projPool.put(a); L[i] = L[L.length - 1]; L.pop(); }
+    else a.mesh.position.set(a.x, 1.4, a.z);
+  }
+}
+
+/* ----------------------------- yaratık güncelle --------------------------- */
+function updateCreeps(dt) {
+  const L = G.creeps, P = G.pressure, R = CFG.arena.spawnR; P.fill(0);
+  for (let i = 0; i < L.length; i++) {
+    const c = L[i]; if (!c.active) continue;
+    if (c.dotT > 0) { c.dotT -= dt; damageCreep(c.dotOwner, c, c.dotDps * dt, null, null); if (!c.active) continue; }
+    if (c.slowT > 0) c.slowT -= dt; if (c.vulnT > 0) c.vulnT -= dt;
+    let sp = c.speed;
+    if (c.stunT > 0) { c.stunT -= dt; sp = 0; } else if (c.slowT > 0) sp *= 1 - c.slowF;
+    const d = Math.hypot(c.x, c.z) || 1; c.x -= c.x / d * sp * dt; c.z -= c.z / d * sp * dt; c.d = d;
+    if (d < CFG.arena.coreR + c.radius) {   // sızıntı
+      G.coreHp = Math.max(0, G.coreHp - c.leak); G.roundLeaks++; G.stats.leaks++;
+      spawnFx(0, 3, 0, 9, 0xff3030, 0.5); removeCreep(c);
+      if (G.roundLeaks === 1) feed('<b style="color:#ff6a5a">Sızıntı!</b> ' + G.players[c.lane].name + ' kenarından — kusursuz tur bozuldu.');
+      continue;
+    }
+    const near = 1 - Math.min(1, d / R);
+    P[c.lane] += (c.hp / G.roundHp) * (0.5 + 2.5 * near * Math.sqrt(near));
+    c.spin += dt * 2; c.body.rotation.y = c.spin;
+    c.mesh.position.set(c.x, c.stunT > 0 ? 0 : Math.abs(Math.sin(c.spin * 2)) * 0.25, c.z);
+    c.bar.scale.x = (c.type === 'boss' ? 4 : 1) * Math.max(0.02, c.hp / c.maxHp); c.bar.quaternion.copy(camera.quaternion);
+    const marked = c.markEl && G.time - c.markT <= CFG.combo.window;
+    c.body.material.emissive.setHex(marked ? ELEMENTS[c.markEl].color : 0); c.body.material.emissiveIntensity = 0.55;
+    if (c.popAcc >= 1 && G.time >= c.popNext) flushPopup(c);
+  }
+  for (let i = L.length - 1; i >= 0; i--) if (!L[i].active) { creepPool.put(L[i]); L[i] = L[L.length - 1]; L.pop(); }
+}
+
+/* ------------------------------ paylaşma: aşı ----------------------------- */
+function setInfusion(ent, el, dur) { ent.infEl = el; ent.infT = dur; ent.aura.visible = true; ent.aura.material.color.setHex(ELEMENTS[el].color); }
+function infuse(giver, target, towerOnly) {
+  const dur = giver.stats.infDur, col = ELEMENTS[giver.el].color;
+  if (towerOnly) setInfusion(towerOnly, giver.el, dur);
+  else { setInfusion(target, giver.el, dur); for (const t of target.towers) setInfusion(t, giver.el, dur); }
+  giver.buffT = dur; giver.infCd = giver.isBot ? CFG.infusion.cdBot : CFG.infusion.cdPlayer;
+  G.stats.infusions++;
+  const tx = towerOnly ? towerOnly.x : target.x, tz = towerOnly ? towerOnly.z : target.z;
+  spawnBeam(giver.x, 1.6, giver.z, tx, 1.6, tz, col, 0.35); spawnFx(tx, 1.2, tz, 4, col, 0.6);
+  feed(ELEMENTS[giver.el].icon + ' <b>' + giver.name + '</b> → <b>' + target.name + (towerOnly ? ' kulesi' : '') + '</b> aşıladı (' + ELEMENTS[giver.el].name + ', ' + Math.round(dur) + ' sn)');
+}
+/* E: menzildeki en yakın takım arkadaşı ya da onun kulesi */
+function tryInfuse(p) {
+  if (p.infCd > 0) return 'Aşılama bekleme süresinde (' + Math.ceil(p.infCd) + ' sn).';
+  const f = findInfuseTarget(p); if (!f) return 'Yakında takım arkadaşı/kulesi yok.';
+  infuse(p, f.player, f.tower); return null;
+}
+function findInfuseTarget(p) {
+  let best = null, bd = CFG.infusion.range;
+  for (const o of G.players) { if (o === p) continue; const d = Math.hypot(o.x - p.x, o.z - p.z); if (d < bd) { bd = d; best = { player: o, tower: null }; } }
+  for (const t of G.towers) { if (t.owner === p) continue; const d = Math.hypot(t.x - p.x, t.z - p.z); if (d < bd) { bd = d; best = { player: t.owner, tower: t }; } }
+  return best;
+}
+/* ------------------------------ paylaşma: öz ------------------------------ */
+function sendEssence(p, to) {
+  if (!to || p.essence < 1) return false;
+  const amt = Math.floor(p.essence); p.essence -= amt;
+  to.ult = Math.min(CFG.ult.need, to.ult + amt * CFG.essence.ultPer);
+  spawnOrb(p, to, 0xc58bff);
+  if (p === G.human || to === G.human) feed('✦ <b>' + p.name + '</b> → <b>' + to.name + '</b> ' + amt + ' öz gönderdi');
+  return true;
+}
+function nearestMate(p) { let b = null, bd = 1e9; for (const o of G.players) { if (o === p) continue; const d = Math.hypot(o.x - p.x, o.z - p.z); if (d < bd) { bd = d; b = o; } } return b; }
+/* ---------------------------------- ult ----------------------------------- */
+function castUlt(p) {
+  if (p.ult < CFG.ult.need) return false;
+  p.ult = 0; const U = CFG.ult, r2 = U.radius * U.radius, dmg = U.dmg * p.stats.dmg * dmgMult(p) * (1 + 0.15 * G.round);
+  spawnFx(p.x, 1.5, p.z, U.radius, ELEMENTS[p.el].color, 0.7); spawnFx(p.x, 1.5, p.z, U.radius * 0.6, 0xffffff, 0.5);
+  for (const c of G.creeps) if (c.active) { const dx = c.x - p.x, dz = c.z - p.z; if (dx * dx + dz * dz < r2) applyHit(p, c, dmg, p.el, null); }
+  feed('★ <b>' + p.name + '</b> ' + ELEMENTS[p.el].name + ' Novası kullandı!');
+  return true;
+}
+/* ---------------------------------- ping ---------------------------------- */
+let pingMesh;
+function createPing(x, z) {
+  const r = Math.hypot(x, z); if (r > CFG.arena.heroMaxR) { x *= CFG.arena.heroMaxR / r; z *= CFG.arena.heroMaxR / r; }
+  if (!pingMesh) {
+    pingMesh = new THREE.Group();
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 14, 6), glow(0xffd76a, 0.8)); b.position.y = 7; pingMesh.add(b);
+    const rg = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.2, 4, 18), glow(0xffd76a, 0.9)); rg.rotation.x = Math.PI / 2; rg.position.y = 0.2; pingMesh.add(rg);
+    scene.add(pingMesh);
+  }
+  pingMesh.position.set(x, 0, z); pingMesh.visible = true;
+  G.ping = { x, z, t: 12 };
+  // en uygun bot: yakın + kendi kenarı rahat
+  let best = null, bs = 1e9;
+  for (const p of G.players) { if (!p.isBot || p === G.human || p.ai.state !== 'home') continue; const s = Math.hypot(p.x - x, p.z - z) + G.pressure[p.edge] * 4; if (s < bs) { bs = s; best = p; } }
+  if (best) { best.ai.state = 'ping'; feed('📍 Ping: <b>' + best.name + '</b> geliyor.'); } else feed('📍 Ping: şu an müsait bot yok.');
+}
+
+/* ================================ 5. BOT AI =============================== */
+/* Kural: aşısı hazır bir bot, en çok baskı altındaki kenar kendi kenarı değilse ve elementi orada
+   etkiliyse (<%30 direnç) o kenarın sahibine koşup aşılar, kısa süre destek ateşi verir, döner. */
+function botThink(p) {
+  const a = p.ai, B = CFG.bot;
+  if (p.essence >= B.essenceSendAt) {       // öz: en baskılı kenarın sahibine (kendisiyse en yakına)
+    let m = 0; for (let e = 1; e < 6; e++) if (G.pressure[e] > G.pressure[m]) m = e;
+    sendEssence(p, m === p.edge ? nearestMate(p) : G.players[m]);
+  }
+  if (p.ult >= CFG.ult.need) { let n = 0; const r2 = (CFG.ult.radius * 0.85) ** 2; for (const c of G.creeps) if (c.active && (c.x - p.x) ** 2 + (c.z - p.z) ** 2 < r2) n += c.type === 'boss' ? 4 : 1; if (n >= 4) castUlt(p); }
+  if (a.state === 'home' && G.state === 'wave' && p.infCd <= 0) {
+    let m = 0; for (let e = 1; e < 6; e++) if (G.pressure[e] > G.pressure[m]) m = e;
+    if (m !== p.edge && G.pressure[m] >= B.pressMin && G.pressure[m] > G.pressure[p.edge] * B.pressRatio &&
+        G.resist[m][p.el] < CFG.resist.effectiveMax && G.helpers[m] < B.maxHelpers) {
+      a.state = 'help'; a.helpEdge = m; G.helpers[m]++;
+    }
+  }
+}
+function botRelease(p) { const a = p.ai; if (a.helpEdge >= 0) { G.helpers[a.helpEdge] = Math.max(0, G.helpers[a.helpEdge] - 1); a.helpEdge = -1; } a.ping = false; a.state = 'home'; }
+function updateBot(p, dt) {
+  const a = p.ai, P = CFG.player;
+  if ((a.think -= dt) <= 0) { a.think = CFG.bot.thinkEvery * rand(0.8, 1.2); botThink(p); }
+  let tx = p.x, tz = p.z, sp = P.walk;
+  if (a.state === 'home') { const d = laneDir(p.edge); tx = d[0] * CFG.arena.postR + d[1] * a.ox; tz = d[1] * CFG.arena.postR - d[0] * a.ox; }
+  else if (a.state === 'help') {
+    const o = G.players[a.helpEdge]; tx = o.x; tz = o.z; sp = P.sprint;
+    if (G.state !== 'wave') botRelease(p);
+    else if (Math.hypot(tx - p.x, tz - p.z) < CFG.infusion.range * 0.7) { infuse(p, o, null); a.state = 'stay'; a.stayT = CFG.bot.helpStay; }
+  } else if (a.state === 'ping') {
+    if (!G.ping) botRelease(p);
+    else { tx = G.ping.x; tz = G.ping.z; sp = P.sprint; if (Math.hypot(tx - p.x, tz - p.z) < 3.5) { a.state = 'stay'; a.ping = true; a.stayT = CFG.bot.pingStay; } }
+  } else if (a.state === 'stay') {
+    if (a.ping && p.infCd <= 0 && G.human !== p && Math.hypot(G.human.x - p.x, G.human.z - p.z) < CFG.infusion.range) infuse(p, G.human, null);
+    if ((a.stayT -= dt) <= 0) botRelease(p);
+  }
+  let dx = tx - p.x, dz = tz - p.z; const d = Math.hypot(dx, dz);
+  if (d > 0.6) {
+    dx /= d; dz /= d;
+    const r = Math.hypot(p.x, p.z) || 1;
+    if (r < 11 && d > 12) { dx += -p.z / r * 1.2; dz += p.x / r * 1.2; const n = Math.hypot(dx, dz); dx /= n; dz /= n; }   // çekirdeğin çevresinden dolan
+    moveHero(p, dx, dz, sp * p.stats.speed, dt); p.faceYaw = Math.atan2(dx, dz);
+  }
+  if ((p.cd -= dt) <= 0) { const t = mostAdvanced(p.x, p.z, heroRange(p)); if (t) { fireHero(p, t); p.cd = 1 / (CORES[p.build.core].rate * p.stats.rate); } }
+}
+/* Tur başında botlar kulelerini elementlerinin en etkili olduğu kenarlara dağıtır (yabancı kenar limiti 2). */
+function botPlaceTowers() {
+  const load = [0, 0, 0, 0, 0, 0], bots = G.players.filter(p => p.isBot), maxN = Math.max(...bots.map(p => p.stats.towers));
+  for (let k = 0; k < maxN; k++) for (const p of bots) {
+    if (k >= p.stats.towers) continue;
+    let best = -1, bs = -1;
+    for (let e = 0; e < 6; e++) {
+      let mine = 0; for (let j = 0; j < k && j < p.towers.length; j++) if (p.towers[p.towers.length - 1 - j].edge === e) mine++;
+      if (e !== p.edge && mine >= CFG.player.foreignTowerLimit) continue;
+      const s = (1 - G.resist[e][p.el]) / (1 + load[e] * 0.45);
+      if (s > bs) { bs = s; best = e; }
+    }
+    const d = laneDir(best), off = ((p.id * 5 + k * 3) % 7 - 3) * 2.6, r = 15 + ((p.id + k * 2) % 4) * 4.5;
+    if (!placeTower(p, d[0] * r + d[1] * off, d[1] * r - d[0] * off)) load[best]++;
+  }
+}
+function botDraft(p) {
+  const cards = genCards(p, 3), up = cards.find(c => c.slot === 'core' && c.id === p.build.core);
+  applyCard(p, up && Math.random() < 0.5 ? up : cards[Math.random() * cards.length | 0]);
+}
+
+/* ============================ 6. CAMERA / INPUT =========================== */
+/* Soyut girdi katmanı: oyun yalnızca Input'u okur. Masaüstü kaynağı aşağıda; mobil için aynı alanları
+   dolduran bir TouchSource (sanal joystick + butonlar) eklemek yeterli. */
+const Input = {
+  move: { x: 0, y: 0 }, look: { dx: 0, dy: 0 }, fire: false, sprint: false, actions: [],
+  press(a) { this.actions.push(a); },
+};
+const DesktopSource = {
+  keys: {}, noLock: false,   // imleç kilidi yoksa (gömülü çerçeve) fare hareketi doğrudan bakışa gider
+  bind: { KeyE: 'infuse', KeyQ: 'essence', KeyF: 'ult', KeyR: 'tower', KeyT: 'auto', Tab: 'map', Digit1: 'card0', Digit2: 'card1', Digit3: 'card2', Digit4: 'card3' },
+  init() {
+    addEventListener('keydown', e => { if (e.repeat) return; this.keys[e.code] = true; const a = this.bind[e.code]; if (a) { Input.press(a); if (e.code === 'Tab') e.preventDefault(); } });
+    addEventListener('keyup', e => { this.keys[e.code] = false; });
+    addEventListener('blur', () => { this.keys = {}; Input.fire = false; });
+    document.addEventListener('pointerlockerror', () => { this.noLock = true; });
+    addEventListener('mousemove', e => { if (document.pointerLockElement === canvas || this.noLock) { Input.look.dx += e.movementX; Input.look.dy += e.movementY; } });
+    canvas.addEventListener('mousedown', e => {
+      if (document.pointerLockElement !== canvas && !this.noLock) { lockPointer(); return; }
+      if (e.button === 0) Input.fire = true; else { Input.press('ping'); e.preventDefault(); }
+    });
+    addEventListener('mouseup', e => { if (e.button === 0) Input.fire = false; });
+    addEventListener('contextmenu', e => e.preventDefault());
+  },
+  poll() {
+    const k = this.keys;
+    Input.move.x = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0); Input.move.y = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0);
+    Input.sprint = !!(k.ShiftLeft || k.ShiftRight);
+    Input.look.dx += ((k.ArrowRight ? 1 : 0) - (k.ArrowLeft ? 1 : 0)) * 14; Input.look.dy += ((k.ArrowDown ? 1 : 0) - (k.ArrowUp ? 1 : 0)) * 8;
+  },
+};
+function lockPointer() { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { DesktopSource.noLock = true; }); } catch (e) { DesktopSource.noLock = true; } }
+
+const Cam = { yaw: 0, pitch: 0.32, dist: 9, sens: 0.0023 };
+const _v = new THREE.Vector3(), _dir = new THREE.Vector3();
+function updateCamera() {
+  const p = G.human;
+  Cam.yaw -= Input.look.dx * Cam.sens; Cam.pitch = clamp(Cam.pitch + Input.look.dy * Cam.sens, -0.2, 1.15);
+  Input.look.dx = Input.look.dy = 0;
+  const fx = Math.sin(Cam.yaw), fz = Math.cos(Cam.yaw), cp = Math.cos(Cam.pitch), sp = Math.sin(Cam.pitch);
+  const px = p.x - fz * 1.4, py = 2.5, pz = p.z + fx * 1.4;          // omuz üstü pivot (sağ omuz)
+  camera.position.set(px - fx * cp * Cam.dist, Math.max(0.6, py + sp * Cam.dist), pz - fz * cp * Cam.dist);
+  camera.lookAt(px + fx * cp * 12, py - sp * 12, pz + fz * cp * 12);
+}
+function aimGroundPoint() {                 // nişangâhın zemini kestiği nokta (ping için)
+  camera.getWorldDirection(_dir);
+  if (_dir.y > -0.02) return { x: G.human.x + _dir.x * 40, z: G.human.z + _dir.z * 40 };
+  const t = -camera.position.y / _dir.y; return { x: camera.position.x + _dir.x * t, z: camera.position.z + _dir.z * t };
+}
+function aimTarget(p, range) {              // nişangâha en yakın yaratık (tıkla-ateş)
+  camera.getWorldDirection(_dir); let best = null, bc = 0.93; const r2 = range * range;
+  for (const c of G.creeps) {
+    if (!c.active || (c.x - p.x) ** 2 + (c.z - p.z) ** 2 > r2) continue;
+    _v.set(c.x - camera.position.x, 1.2 - camera.position.y, c.z - camera.position.z).normalize();
+    const d = _v.dot(_dir); if (d > bc) { bc = d; best = c; }
+  }
+  return best;
+}
+function moveHero(p, dx, dz, speed, dt) {
+  p.x += dx * speed * dt; p.z += dz * speed * dt;
+  const r = Math.hypot(p.x, p.z) || 0.001, A = CFG.arena;
+  if (r > A.heroMaxR) { p.x *= A.heroMaxR / r; p.z *= A.heroMaxR / r; }
+  else if (r < A.coreR + 2) { p.x *= (A.coreR + 2) / r; p.z *= (A.coreR + 2) / r; }
+}
+function updateHuman(p, dt) {
+  const P = CFG.player, fx = Math.sin(Cam.yaw), fz = Math.cos(Cam.yaw), rx = -fz, rz = fx;
+  let vx = fx * Input.move.y + rx * Input.move.x, vz = fz * Input.move.y + rz * Input.move.x;
+  const moving = vx !== 0 || vz !== 0, maxSt = P.stamina * p.stats.stamina;
+  let sprint = Input.sprint && moving && !p.exhausted && p.stamina > 0;
+  if (sprint) { p.stamina -= P.staminaDrain * dt; if (p.stamina <= 0) { p.stamina = 0; p.exhausted = true; } }
+  else { p.stamina = Math.min(maxSt, p.stamina + P.staminaRegen * dt); if (p.stamina > maxSt * 0.25) p.exhausted = false; }
+  if (moving) { const n = Math.hypot(vx, vz); vx /= n; vz /= n; moveHero(p, vx, vz, (sprint ? P.sprint : P.walk) * p.stats.speed, dt); p.faceYaw = Math.atan2(vx, vz); }
+  for (const a of Input.actions) {
+    let err = null;
+    if (a === 'infuse') err = tryInfuse(p);
+    else if (a === 'essence') { if (!sendEssence(p, nearestMate(p))) err = 'Gönderilecek öz yok.'; }
+    else if (a === 'ult') { if (!castUlt(p)) err = 'Ult hazır değil — takım arkadaşların öz göndermeli.'; }
+    else if (a === 'tower') err = placeTower(p, p.x + fx * 4, p.z + fz * 4);
+    else if (a === 'ping') { const g = aimGroundPoint(); createPing(g.x, g.z); }
+    else if (a === 'auto') { G.autoFire = !G.autoFire; feed('Otomatik ateş: <b>' + (G.autoFire ? 'AÇIK' : 'KAPALI') + '</b>'); }
+    if (err) feed('<span style="color:#ff9a8a">' + err + '</span>');
+  }
+  p.cd -= dt;
+  if (p.cd <= 0 && (Input.fire || G.autoFire)) {
+    const range = heroRange(p), t = (Input.fire && aimTarget(p, range)) || nearestCreep(p.x, p.z, range);
+    if (t) { fireHero(p, t); p.cd = 1 / (CORES[p.build.core].rate * p.stats.rate); }
+  }
+}
+function updateHeroCommon(p, dt) {
+  if (p.infT > 0 && (p.infT -= dt) <= 0) p.aura.visible = false;
+  if (p.buffT > 0) p.buffT -= dt; if (p.infCd > 0) p.infCd -= dt;
+  p.mesh.position.set(p.x, 0, p.z); p.mesh.rotation.y = p.faceYaw;
+  if (p.aura.visible) p.aura.rotation.z += dt * 3;
+}
+function updateTowers(dt) {
+  const T = CFG.tower;
+  for (const t of G.towers) {
+    if (t.infT > 0 && (t.infT -= dt) <= 0) t.aura.visible = false;
+    t.top.rotation.y += dt * 2;
+    if ((t.cd -= dt) > 0) continue;
+    const c = mostAdvanced(t.x, t.z, T.range); if (!c) { t.cd = 0.15; continue; }
+    const o = t.owner, el = shotEl(t, o.el), dx = c.x - t.x, dz = c.z - t.z, d = Math.hypot(dx, dz) || 1;
+    spawnProj(o, t.x, t.z, dx / d, dz / d, T.speed, T.dmg * o.stats.dmg * o.stats.towerDmg * dmgMult(o), el, T.range / T.speed * 1.4, { turn: T.turn, target: c, small: true });
+    t.cd = 1 / T.rate;
+  }
+}
+function updateFx(dt) {
+  for (let i = G.fxs.length - 1; i >= 0; i--) {
+    const f = G.fxs[i]; f.t += dt; const k = f.t / f.life;
+    if (k >= 1) { f.mesh.visible = false; fxPool.put(f); G.fxs[i] = G.fxs[G.fxs.length - 1]; G.fxs.pop(); continue; }
+    if (f.orb) { const o = f.orb; f.mesh.position.set(o.fx + (o.to.x - o.fx) * k, 2 + Math.sin(k * Math.PI) * 4, o.fz + (o.to.z - o.fz) * k); }
+    else { f.mesh.scale.setScalar(Math.max(0.1, f.r * (0.3 + 0.7 * k))); f.mesh.material.opacity = 0.55 * (1 - k); }
+  }
+  for (let i = G.beams.length - 1; i >= 0; i--) {
+    const b = G.beams[i]; b.t -= dt;
+    if (b.t <= 0) { b.mesh.visible = false; beamPool.put(b); G.beams[i] = G.beams[G.beams.length - 1]; G.beams.pop(); } else b.mesh.material.opacity = b.t / 0.12;
+  }
+}
+
+/* ================================ 7. UI / HUD ============================== */
+const $ = id => document.getElementById(id);
+const UI = {
+  slowT: 0, bannerT: 0, comboT: 0, mapBigUntil: 0, feedItems: [],
+  popPool: null, pops: [],
+  init() {
+    const root = $('popups');
+    this.popPool = new Pool(CFG.pools.popups, () => { const el = document.createElement('div'); el.className = 'pop'; root.appendChild(el); return { el }; });
+    this.mini = $('mini').getContext('2d');
+  },
+  buildResist() {
+    const me = G.human; let h = '<h4>DİRENÇ HARİTASI — Tur ' + G.round + ' <span style="font-weight:400;color:#8fa0ba">(Tab: büyüt)</span></h4><table><tr><th></th>';
+    for (const k of EL_KEYS) h += '<th class="' + (k === me.el ? 'me' : '') + '">' + ELEMENTS[k].icon + '</th>';
+    h += '<th>baskı</th></tr>';
+    for (let e = 0; e < 6; e++) {
+      const p = G.players[e], row = G.resist[e];
+      h += '<tr class="' + (p === me ? 'mine' : '') + '"><td class="nm">' + ELEMENTS[p.el].icon + ' ' + p.name + '</td>';
+      for (const k of EL_KEYS) { const r = row[k], cls = r < 0 ? 'weak' : r < CFG.resist.effectiveMax ? 'eff' : r < 0.6 ? 'mid' : 'bad'; h += '<td class="' + cls + (k === p.el ? ' own' : '') + '">' + (r < 0 ? '+' + Math.round(-r * 100) : Math.round(r * 100)) + '%</td>'; }
+      h += '<td><span class="pr"><i id="pr' + e + '"></i></span></td></tr>';
+    }
+    const good = []; for (let e = 0; e < 6; e++) if (G.resist[e][me.el] < CFG.resist.effectiveMax) good.push(G.players[e].name);
+    h += '</table><div id="resHint">Hücre = o kenardaki dalganın elemente direnci. Yeşil: etkili · Kırmızı: dirençli · Beyaz çerçeve: kenar sahibinin elementi.<br>' +
+      'Senin elementin ' + ELEMENTS[me.el].icon + ' şu kenarlarda etkili: <b style="color:#8dffb0">' + (good.join(', ') || '—') + '</b> → oraya kule koy / sahibini aşıla.</div>';
+    $('resPanel').innerHTML = h;
+  },
+  slots() {
+    const b = G.human.build, set = (id, n, l) => { const e = $(id); e.children[1].textContent = n; e.children[2].textContent = l; };
+    set('sCore', CORES[b.core].name, 'Lv ' + b.coreLvl);
+    set('sMod', b.mod ? MODS[b.mod].name : '—', b.mod ? 'Lv ' + b.modLvl : 'boş');
+    set('sPas', b.passive ? PASSIVES[b.passive].name : '—', b.passive ? 'Lv ' + b.passiveLvl : 'boş');
+  },
+  slow() {
+    const p = G.human;
+    $('roundTxt').textContent = 'TUR ' + G.round + ' / ' + CFG.rounds + (G.state === 'prep' ? '  ·  hazırlık ' + Math.ceil(CFG.prepTime - G.stateT) + ' sn' : '  ·  kalan yaratık ' + (G.creeps.length + G.spawnQ.length));
+    $('coreBar').firstElementChild.style.width = (G.coreHp / CFG.core.hp * 100) + '%';
+    $('coreBar').lastElementChild.textContent = 'ORTAK ÇEKİRDEK ' + Math.ceil(G.coreHp) + ' / ' + CFG.core.hp;
+    $('chainTxt').textContent = G.chain > 0 ? '★ Kusursuz zincir x' + G.chain + '  →  takım hasarı +%' + Math.round(G.chain * CFG.flawless.dmgPerChain * 100) : (G.state === 'wave' && G.roundLeaks === 0 ? 'Bu tur şimdilik kusursuz' : '');
+    for (let e = 0; e < 6; e++) { const el = $('pr' + e); if (el) el.style.width = Math.min(100, G.pressure[e] / 24 * 100) + '%'; }
+    let h = '';
+    for (const o of G.players) h += '<div class="row"><span class="dot" style="background:' + hex(ELEMENTS[o.el].color) + '"></span><span style="width:54px;' + (o === p ? 'color:#ffd76a;font-weight:700' : '') + '">' + o.name + '</span>' +
+      '<span style="width:20px">' + (o.infT > 0 ? ELEMENTS[o.infEl].icon : '') + '</span><span class="ub"><i style="width:' + o.ult + '%"></i></span><span style="width:34px;text-align:right">✦' + Math.floor(o.essence) + '</span></div>';
+    $('team').innerHTML = h;
+    const f = findInfuseTarget(p);
+    $('hint').textContent = f && p.infCd <= 0 ? '[E] ' + f.player.name + (f.tower ? ' kulesini' : '’i') + ' aşıla (' + ELEMENTS[p.el].name + ')' : (p.ult >= CFG.ult.need ? '[F] ULT HAZIR' : '');
+    $('info').innerHTML = '✦ Öz <b>' + Math.floor(p.essence) + '</b> [Q] · Kule <b>' + p.towers.length + '/' + p.stats.towers + '</b> [R] · Aşı <b>' + (p.infCd > 0 ? Math.ceil(p.infCd) + ' sn' : 'hazır') + '</b> [E]' +
+      (p.infT > 0 ? ' · Aşılı ' + ELEMENTS[p.infEl].icon + ' ' + Math.ceil(p.infT) + 's' : '') + (p.buffT > 0 ? ' · <b style="color:#8dffb0">+hasar ' + Math.ceil(p.buffT) + 's</b>' : '') + ' · Oto [T] ' + (G.autoFire ? 'açık' : 'kapalı');
+    this.drawMini();
+  },
+  frame(dt) {
+    const p = G.human, maxSt = CFG.player.stamina * p.stats.stamina;
+    $('stam').firstElementChild.style.width = (p.stamina / maxSt * 100) + '%';
+    $('ult').firstElementChild.style.width = p.ult + '%'; $('ult').className = 'bar' + (p.ult >= CFG.ult.need ? ' full' : '');
+    if ((this.slowT -= dt) <= 0) { this.slowT = 0.2; this.slow(); }
+    if (this.bannerT > 0 && (this.bannerT -= dt) <= 0) $('banner').style.opacity = 0;
+    if (this.comboT > 0 && (this.comboT -= dt) <= 0) $('comboBanner').style.opacity = 0;
+    $('resPanel').classList.toggle('big', G.time < this.mapBigUntil);
+    const W = innerWidth, H = innerHeight;
+    for (let i = this.pops.length - 1; i >= 0; i--) {
+      const o = this.pops[i]; o.t += dt;
+      if (o.t >= o.life) { o.el.style.display = 'none'; this.popPool.put(o); this.pops[i] = this.pops[this.pops.length - 1]; this.pops.pop(); continue; }
+      _v.set(o.x, o.y + o.t * 2.2, o.z).project(camera);
+      if (_v.z > 1 || _v.z < -1) { o.el.style.opacity = 0; continue; }
+      o.el.style.opacity = 1 - (o.t / o.life) ** 2;
+      o.el.style.transform = 'translate(' + ((_v.x * 0.5 + 0.5) * W | 0) + 'px,' + ((-_v.y * 0.5 + 0.5) * H | 0) + 'px) translate(-50%,-50%)';
+    }
+  },
+  drawMini() {
+    const g = this.mini, S = 180, c = S / 2, k = 82 / CFG.arena.R, X = x => c + x * k, Y = z => c - z * k;
+    g.clearRect(0, 0, S, S);
+    for (let e = 0; e < 6; e++) {
+      const a0 = e * SEC, a1 = (e + 1) * SEC, R = CFG.arena.R;
+      g.beginPath(); g.moveTo(c, c); g.lineTo(X(Math.sin(a0) * R), Y(Math.cos(a0) * R)); g.lineTo(X(Math.sin(a1) * R), Y(Math.cos(a1) * R)); g.closePath();
+      g.fillStyle = 'rgba(255,70,60,' + Math.min(0.55, G.pressure[e] / 40) + ')'; g.fill(); g.strokeStyle = hex(ELEMENTS[G.players[e].el].color); g.lineWidth = 1; g.stroke();
+    }
+    g.fillStyle = '#ff7a6a'; for (const cr of G.creeps) if (cr.active) { const s = cr.type === 'boss' ? 6 : 2; g.fillRect(X(cr.x) - s / 2, Y(cr.z) - s / 2, s, s); }
+    for (const t of G.towers) { g.fillStyle = hex(ELEMENTS[t.owner.el].color); g.fillRect(X(t.x) - 2, Y(t.z) - 2, 4, 4); }
+    for (const p of G.players) { g.beginPath(); g.arc(X(p.x), Y(p.z), p === G.human ? 5 : 3.5, 0, TAU); g.fillStyle = hex(ELEMENTS[p.el].color); g.fill(); if (p === G.human) { g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke(); g.beginPath(); g.moveTo(X(p.x), Y(p.z)); g.lineTo(X(p.x + Math.sin(Cam.yaw) * 12), Y(p.z + Math.cos(Cam.yaw) * 12)); g.stroke(); } }
+    if (G.ping) { g.strokeStyle = '#ffd76a'; g.lineWidth = 2; g.beginPath(); g.arc(X(G.ping.x), Y(G.ping.z), 6, 0, TAU); g.stroke(); }
+    g.fillStyle = '#39d0ff'; g.beginPath(); g.arc(c, c, 4, 0, TAU); g.fill();
+  },
+};
+function popup(x, y, z, text, cls) {
+  let o = UI.popPool.get();
+  if (!o) { if (cls !== 'combo') return; o = UI.pops.shift(); if (!o) return; }
+  o.x = x; o.y = y; o.z = z; o.t = 0; o.life = cls === 'combo' ? 1.3 : 0.7;
+  o.el.textContent = text; o.el.className = 'pop ' + (cls || ''); o.el.style.display = 'block'; o.el.style.opacity = 0; UI.pops.push(o);
+}
+function feed(html) {
+  const f = $('feed'), d = document.createElement('div'); d.innerHTML = html; f.appendChild(d);
+  while (f.children.length > 6) f.removeChild(f.firstChild);
+  setTimeout(() => { if (d.parentNode) d.parentNode.removeChild(d); }, 9000);
+}
+function banner(text, color) { const b = $('banner'); b.textContent = text; b.style.color = color || '#fff'; b.style.opacity = 1; UI.bannerT = 2.6; }
+function comboBanner(text) { const b = $('comboBanner'); b.textContent = '⟡ ' + text; b.style.opacity = 1; UI.comboT = 0.9; }
+
+/* --------------------------------- draft ---------------------------------- */
+const SLOT_T = { core: ['SİLAH ÇEKİRDEĞİ', CORES], mod: ['MOD', MODS], passive: ['PASİF', PASSIVES] };
+function genCards(p, n) {
+  const b = p.build, pool = [], out = [{ slot: 'core', id: b.core }];     // en az bir yükseltme garantili
+  for (const s in SLOT_T) for (const id in SLOT_T[s][1]) pool.push({ slot: s, id });
+  shuffle(pool);
+  for (const c of pool) { if (out.length >= n) break; if (!out.some(o => o.slot === c.slot && o.id === c.id)) out.push(c); }
+  return shuffle(out);
+}
+function applyCard(p, c) { const b = p.build; if (b[c.slot] === c.id) b[c.slot + 'Lvl']++; else b[c.slot] = c.id; calcStats(p); }
+let draftCards = null;
+function openDraft() {
+  G.state = 'draft'; if (document.exitPointerLock) document.exitPointerLock();
+  for (const p of G.players) if (p.isBot) botDraft(p);
+  if (AUTO) { closeDraft(); return; }
+  const n = 3 + (G.extraCard ? CFG.flawless.extraCards : 0), b = G.human.build;
+  draftCards = genCards(G.human, n);
+  let h = '<h1>Tur ' + G.round + ' tamamlandı</h1><p>' + (G.extraCard ? '<b style="color:#ffd76a">KUSURSUZ TUR!</b> Ekstra kart + zincir x' + G.chain + ' (takım hasarı +%' + Math.round(G.chain * CFG.flawless.dmgPerChain * 100) + ')' : 'Bu tur ' + G.roundLeaks + ' sızıntı oldu — zincir sıfırlandı.') + '</p><p>Bir kart seç (tıkla ya da 1–' + n + '):</p><div class="cards">';
+  draftCards.forEach((c, i) => {
+    const d = SLOT_T[c.slot][1][c.id], cur = b[c.slot], up = cur === c.id;
+    h += '<div class="card" data-i="' + i + '"><div class="t">' + SLOT_T[c.slot][0] + '</div><div class="n">' + d.name + '</div><div class="d">' + d.desc + '</div><div class="a">' +
+      (up ? 'YÜKSELT → Lv ' + (b[c.slot + 'Lvl'] + 1) : cur ? 'DEĞİŞTİR (' + SLOT_T[c.slot][1][cur].name + ' yerine, seviye korunur)' : 'YENİ') + '</div></div>';
+  });
+  showOverlay(h + '</div>');
+  document.querySelectorAll('.card').forEach(el => el.onclick = () => pickCard(+el.dataset.i));
+}
+function pickCard(i) { if (G.state !== 'draft' || !draftCards || !draftCards[i]) return; applyCard(G.human, draftCards[i]); draftCards = null; closeDraft(); }
+function closeDraft() { hideOverlay(); UI.slots(); lockPointer(); startRound(G.round + 1); }
+function showOverlay(html) { $('ovBox').innerHTML = html; $('overlay').classList.remove('hide'); }
+function hideOverlay() { $('overlay').classList.add('hide'); }
+
+/* =============================== 8. GAME LOOP ============================== */
+function startRound(n) {
+  G.round = n; G.state = 'prep'; G.stateT = 0; G.roundLeaks = 0; G.waveT = 0; G.helpers.fill(0);
+  G.roundHp = CFG.wave.baseHp * Math.pow(CFG.wave.hpGrowth, n - 1);
+  G.resist = genResistance(); G.spawnQ = genWave(n);
+  for (const p of G.players) if (p.isBot) botRelease(p);
+  botPlaceTowers();
+  UI.buildResist(); UI.mapBigUntil = G.time + 5.5;
+  banner('TUR ' + n + (CFG.bossRounds.includes(n) ? ' — BOSS' : ''), CFG.bossRounds.includes(n) ? '#ff6a5a' : '#fff');
+}
+function endRound() {
+  const flawless = G.roundLeaks === 0;
+  if (flawless) { G.chain = Math.min(CFG.flawless.maxChain, G.chain + 1); G.stats.flawless++; } else G.chain = 0;
+  G.extraCard = flawless;
+  if (G.round >= CFG.rounds) return endGame(true);
+  openDraft();
+}
+function endGame(won) {
+  G.state = won ? 'won' : 'lost'; if (document.exitPointerLock) document.exitPointerLock();
+  const p = G.human, s = G.stats;
+  showOverlay('<h1 style="color:' + (won ? '#8dffb0' : '#ff6a5a') + '">' + (won ? 'ZAFER — Çekirdek korundu!' : 'ÇEKİRDEK DÜŞTÜ') + '</h1>' +
+    '<p>Tur ' + G.round + ' / ' + CFG.rounds + ' · Çekirdek ' + Math.ceil(G.coreHp) + ' · Kusursuz tur: ' + s.flawless + ' · Sızıntı: ' + s.leaks + '</p>' +
+    '<p>Takım kombosu: ' + s.combos + ' · Aşılama: ' + s.infusions + ' · Senin öldürmen: ' + p.kills + ' · Senin kombon: ' + p.combos + '</p>' +
+    '<button class="go" onclick="location.reload()">Yeniden Oyna</button>');
+}
+
+function update(dt) {
+  if (G.state !== 'prep' && G.state !== 'wave') return;
+  G.time += dt; G.stateT += dt;
+  if (G.state === 'prep' && G.stateT >= CFG.prepTime) { G.state = 'wave'; G.stateT = 0; }
+  if (G.state === 'wave') {
+    G.waveT += dt;
+    while (G.spawnQ.length && G.spawnQ[G.spawnQ.length - 1].t <= G.waveT) { const s = G.spawnQ.pop(); spawnCreep(s.lane, s.type); }
+  }
+  for (const a of Input.actions) { if (a === 'map') UI.mapBigUntil = G.time < UI.mapBigUntil ? 0 : G.time + 60; }
+  for (const p of G.players) { if (p.isBot) updateBot(p, dt); else updateHuman(p, dt); updateHeroCommon(p, dt); }
+  Input.actions.length = 0;
+  updateTowers(dt); updateProjectiles(dt); updateCreeps(dt); updateFx(dt);
+  if (G.ping && (G.ping.t -= dt) <= 0) { G.ping = null; pingMesh.visible = false; }
+  if (coreMesh) { coreMesh.rotation.y += dt * 0.6; coreMesh.rotation.x += dt * 0.25; }
+  if (G.coreHp <= 0) return endGame(false);
+  if (G.state === 'wave' && !G.spawnQ.length && !G.creeps.length) endRound();
+}
+
+let last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  DesktopSource.poll();
+  if (G.state === 'draft') { for (const a of Input.actions) if (a.startsWith('card')) pickCard(+a[4]); Input.actions.length = 0; }
+  else if (G.state === 'menu' || G.state === 'won' || G.state === 'lost') Input.actions.length = 0;
+  update(dt);
+  if (G.human) { updateCamera(); UI.frame(dt); }
+  renderer.render(scene, camera);
+}
+function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize);
+
+function init() {
+  const els = shuffle(EL_KEYS.slice());                    // rastgele, tekrarsız element dağıtımı
+  for (let i = 0; i < 6; i++) G.players.push(makePlayer(i, els[i]));
+  G.human = G.players[0]; Cam.yaw = laneAng(0);
+  buildArena(); UI.init(); UI.slots(); DesktopSource.init(); resize();
+  const me = ELEMENTS[G.human.el];
+  showOverlay('<h1>ALTIGEN REZONANS</h1><p>6 kişilik co-op alan savunması — sen + 5 bot. Yaratıklar altı kenardan Ortak Çekirdek\'e akar.<br>' +
+    'Elementin: <b style="color:' + hex(me.color) + '">' + me.icon + ' ' + me.name + '</b>. Kendi kenarında elementin çoğu tur <b>%60 dirençle</b> karşılanır — paylaşmadan kusursuz tur çıkmaz.</p>' +
+    '<div class="keys"><div><b>WASD</b> hareket · <b>Fare</b> bakış</div><div><b>Shift</b> sprint (stamina)</div>' +
+    '<div><b>Sol tık</b> nişanlı ateş · <b>T</b> oto ateş</div><div><b>R</b> kule koy (limit dolunca en eski taşınır)</div>' +
+    '<div><b>E</b> Aşılama: yakındaki dosta 25 sn elementini ver</div><div><b>Q</b> Öz gönder → alanın ult barı dolar</div>' +
+    '<div><b>F</b> Ult (Element Novası)</div><div><b>Sağ/Orta tık</b> ping: bir bot yardıma gelir</div>' +
+    '<div><b>Tab</b> direnç haritasını büyüt</div><div><b>Rezonans</b>: 2 sn içinde aynı hedefe 2 farklı element</div></div>' +
+    '<button class="go" id="goBtn">BAŞLA</button>');
+  $('goBtn').onclick = () => { hideOverlay(); lockPointer(); startRound(1); };
+  if (AUTO) { hideOverlay(); startRound(1); }
+  requestAnimationFrame(loop);
+}
+init();
+/* test/denge kancası: konsoldan __sim(saniye) ile hızlı ileri sar (özellikle ?auto ile) */
+window.__G = G; window.__CFG = CFG; window.__sim = sec => { for (let t = 0; t < sec && (G.state === 'prep' || G.state === 'wave'); t += 1 / 30) update(1 / 30); return G.state; };
+</script>
+</body>
+</html>
