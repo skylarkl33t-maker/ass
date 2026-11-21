@@ -490,6 +490,13 @@ function buildArena() {
 }
 
 /* -------------------------------- oyuncular ------------------------------ */
+let ENV = null;
+function makeEnv() {                    // yansıma ortamı: koyu stüdyo + beyaz ışık şeritleri (prosedürel)
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256; const g = cv.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#3a3c40'); gr.addColorStop(0.45, '#15161a'); gr.addColorStop(0.55, '#08080a'); gr.addColorStop(1, '#1c1d20'); g.fillStyle = gr; g.fillRect(0, 0, 512, 256);
+  g.fillStyle = '#ffffff'; for (const x of [40, 170, 300, 430]) g.fillRect(x, 28, 60, 14); g.fillStyle = '#c8ccd2'; g.fillRect(0, 96, 512, 5); g.fillStyle = '#8a8e96'; g.fillRect(90, 150, 30, 60); g.fillRect(390, 150, 30, 60);
+  const t = new THREE.CanvasTexture(cv); t.mapping = THREE.EquirectangularReflectionMapping; const pm = new THREE.PMREMGenerator(renderer); ENV = pm.fromEquirectangular(t).texture; pm.dispose(); t.dispose();
+}
 function makePlayer(id, el) {
   const d = laneDir(id), col = ELEMENTS[el].color;
   const p = {
@@ -499,43 +506,55 @@ function makePlayer(id, el) {
     stats: {}, modv: {}, cd: 0, ult: 0, flip: false, stamina: CFG.player.stamina, exhausted: false,
     kills: 0, dmgDone: 0, combos: 0, leaks: 0, recoil: 0, walk: 0, moving: false, faceT: 0, wp: Math.random() * 9,
   };
-  // ince yapılı humanoid robot: pürüzsüz gümüş kabuklar, siyah eklemler, koyu vizörlü yuvarlak baş, göğüste kırmızı ışık
-  const g = new THREE.Group(), body = new THREE.Group(); g.add(body); p.body = body; g.scale.setScalar(1.12);
-  const shell = new THREE.MeshPhongMaterial({ color: 0x8e949f, specular: 0x3a4250, shininess: 45 }), joint = new THREE.MeshPhongMaterial({ color: 0x14161c, specular: 0x55606e, shininess: 60 });
-  const lit = new THREE.MeshBasicMaterial({ color: col }), red = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  // humanoid robot: döner yüzeylerle biçimlenmiş gümüş zırh kabukları, siyah eklemler, parlak siyah vizör; tüfeği iki elle nişanda tutar
+  if (!ENV) makeEnv();
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body); p.body = body; g.scale.setScalar(1.1);
+  const shell = new THREE.MeshStandardMaterial({ color: 0xd9dde3, metalness: 0.9, roughness: 0.26, envMap: ENV, envMapIntensity: 1.15 });
+  const joint = new THREE.MeshStandardMaterial({ color: 0x0d0e11, metalness: 0.55, roughness: 0.5, envMap: ENV, envMapIntensity: 0.7 });
+  const visor = new THREE.MeshStandardMaterial({ color: 0x030304, metalness: 1, roughness: 0.08, envMap: ENV, envMapIntensity: 1.6 });
+  const lit = new THREE.MeshBasicMaterial({ color: col }), white = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const P = (geo, m, x, y, z, par) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; (par || body).add(o); return o; };
-  const cyl = (r, h, r2) => new THREE.CylinderGeometry(r, r2 == null ? r : r2, h, 14), sph = r => new THREE.SphereGeometry(r, 14, 10), bx = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  const lathe = pts => new THREE.LatheGeometry(pts.map(q => new THREE.Vector2(q[0], q[1])), 20), sph = r => new THREE.SphereGeometry(r, 18, 12), cyl = (r, h, r2) => new THREE.CylinderGeometry(r, r2 == null ? r : r2, h, 18), bx = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  const THIGH = lathe([[0.0, 0], [0.09, 0.01], [0.105, 0.1], [0.135, 0.32], [0.15, 0.5], [0.135, 0.62], [0.0, 0.64]]), SHIN = lathe([[0.0, 0], [0.062, 0.01], [0.075, 0.12], [0.115, 0.36], [0.118, 0.48], [0.092, 0.6], [0.0, 0.62]]);
+  const UARM = lathe([[0.0, 0], [0.065, 0.01], [0.085, 0.14], [0.1, 0.32], [0.085, 0.44], [0.0, 0.46]]), FARM = lathe([[0.0, 0], [0.05, 0.01], [0.06, 0.08], [0.09, 0.26], [0.08, 0.38], [0.0, 0.4]]);
   p.legs = []; p.shins = [];
   for (const s of [-1, 1]) {                                // bacak: kalçadan ve dizden eklemli
-    const L = new THREE.Group(); L.position.set(s * 0.2, 1.42, 0); g.add(L); p.legs.push(L);
-    P(sph(0.14), joint, 0, 0, 0, L); P(cyl(0.155, 0.56, 0.115), shell, 0, -0.36, 0, L);
-    const K = new THREE.Group(); K.position.set(0, -0.72, 0); L.add(K); p.shins.push(K);
-    P(sph(0.115), joint, 0, 0, 0, K); P(cyl(0.125, 0.54, 0.08), shell, 0, -0.34, 0, K); P(sph(0.075), joint, 0, -0.63, 0, K);
-    const ft = P(sph(0.13), shell, 0, -0.68, 0.09, K); ft.scale.set(0.85, 0.45, 1.7);
+    const L = new THREE.Group(); L.position.set(s * 0.19, 1.62, 0); g.add(L); p.legs.push(L);
+    P(sph(0.125), joint, 0, 0, 0, L); P(THIGH, shell, 0, -0.7, 0, L);
+    const K = new THREE.Group(); K.position.set(0, -0.74, 0); L.add(K); p.shins.push(K);
+    P(sph(0.098), joint, 0, 0, 0, K); const kc = P(sph(0.1), shell, 0, 0.01, 0.055, K); kc.scale.set(0.95, 1.15, 0.6);
+    P(SHIN, shell, 0, -0.68, -0.012, K); P(sph(0.065), joint, 0, -0.71, 0, K);
+    const ft = P(sph(0.12), shell, 0, -0.795, 0.085, K); ft.scale.set(0.82, 0.5, 1.85); P(bx(0.17, 0.035, 0.4), joint, 0, -0.855, 0.085, K);
   }
-  const pel = P(sph(0.27), shell, 0, 1.46, 0); pel.scale.set(1.05, 0.62, 0.8); P(bx(0.16, 0.2, 0.2), joint, 0, 1.4, 0.1);                     // kalça
-  for (let k = 0; k < 3; k++) P(cyl(0.17 - k * 0.012, 0.09, 0.16 - k * 0.012), joint, 0, 1.63 + k * 0.1, 0);                               // boğumlu siyah bel
-  const chest = P(cyl(0.4, 0.5, 0.25), shell, 0, 2.14, 0); chest.scale.z = 0.66; const cht = P(sph(0.4), shell, 0, 2.38, 0); cht.scale.set(1, 0.34, 0.66);   // V göğüs
-  P(bx(0.2, 0.36, 0.06), joint, 0, 2.08, 0.25); P(sph(0.05), red, 0, 2.2, 0.29);                                                              // göğüs paneli + kırmızı ışık
-  const pk = P(bx(0.34, 0.4, 0.14), joint, 0, 2.14, -0.26); P(bx(0.05, 0.26, 0.04), lit, 0, 2.14, -0.34);                                     // sırt ünitesi (element rengi)
-  for (const s of [-1, 1]) { P(sph(0.15), joint, s * 0.47, 2.36, 0); const cap = P(sph(0.17), shell, s * 0.5, 2.42, 0); cap.scale.set(1, 0.6, 1); }
-  p.armL = new THREE.Group(); p.armL.position.set(-0.5, 2.34, 0); body.add(p.armL);                                                           // sol kol: omuzdan sallanır
-  P(cyl(0.1, 0.46, 0.08), shell, 0, -0.32, 0, p.armL); P(sph(0.085), joint, 0, -0.58, 0, p.armL);
-  const fa = P(cyl(0.085, 0.42, 0.06), shell, 0, -0.78, 0.08, p.armL); fa.rotation.x = -0.4; P(sph(0.075), joint, 0, -0.99, 0.17, p.armL);
-  P(cyl(0.07, 0.16), joint, 0, 2.52, 0);
-  p.head = new THREE.Group(); p.head.position.set(0, 2.8, 0); body.add(p.head);
-  const skull = P(sph(0.25), shell, 0, 0, 0, p.head); skull.scale.set(0.92, 1.12, 1);
-  const face = P(sph(0.22), joint, 0, -0.01, 0.07, p.head); face.scale.set(0.88, 0.95, 0.9);                                                  // koyu vizör yüz
-  P(bx(0.2, 0.025, 0.02), red, 0, 0.04, 0.27, p.head);                                                                                        // göz şeridi
-  for (const s of [-1, 1]) { const ear = P(cyl(0.07, 0.05), joint, s * 0.23, 0, 0, p.head); ear.rotation.z = Math.PI / 2; }
-  p.gun = new THREE.Group(); p.gun.position.set(0.5, 2.3, 0.08); body.add(p.gun);                                                             // sağ kol ileri uzanır, tüfek ön kola monte
-  const ua = P(cyl(0.095, 0.46, 0.08), shell, 0, 0, 0.26, p.gun); ua.rotation.x = Math.PI / 2; P(sph(0.085), joint, 0, 0, 0.52, p.gun);
-  const fr = P(cyl(0.08, 0.4, 0.07), shell, 0, 0, 0.74, p.gun); fr.rotation.x = Math.PI / 2;
-  P(bx(0.2, 0.24, 1.1), joint, 0, -0.16, 1.05, p.gun); P(bx(0.07, 0.07, 1.3), shell, 0, -0.02, 1.1, p.gun);
-  for (let k = 0; k < 3; k++) P(bx(0.23, 0.27, 0.05), lit, 0, -0.16, 0.75 + k * 0.27, p.gun);
-  P(bx(0.11, 0.11, 0.26), lit, 0, -0.16, 1.7, p.gun);
-  p.orb = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), lit); p.orb.position.set(-0.85, 3.1, -0.4); g.add(p.orb);                          // omuz dronu: ult göstergesi
-  if (id !== 0) { p.label = makeLabel(p.name, hex(col)); p.label.position.y = 4; p.label.scale.set(4.5, 1.1, 1); g.add(p.label); }
+  const pel = P(lathe([[0.0, 0], [0.13, 0.02], [0.25, 0.12], [0.265, 0.22], [0.19, 0.3], [0.0, 0.31]]), shell, 0, 1.5, 0); pel.scale.z = 0.72;      // kalça
+  for (let k = 0; k < 3; k++) P(cyl(0.175 + k * 0.012, 0.085, 0.165 + k * 0.012), joint, 0, 1.85 + k * 0.095, 0).scale.z = 0.78;                 // boğumlu bel
+  const chest = P(lathe([[0.0, 0], [0.2, 0.02], [0.28, 0.14], [0.36, 0.36], [0.375, 0.5], [0.3, 0.63], [0.14, 0.7], [0.0, 0.71]]), shell, 0, 2.1, 0); chest.scale.z = 0.64;
+  for (const s of [-1, 1]) { const pec = P(sph(0.2), shell, s * 0.17, 2.52, 0.13); pec.scale.set(1, 0.72, 0.5); }                                 // göğüs plakaları
+  P(bx(0.15, 0.3, 0.05), joint, 0, 2.3, 0.2); P(sph(0.035), white, 0, 2.38, 0.235);                                                              // karın paneli + ışık
+  P(bx(0.06, 0.62, 0.07), joint, 0, 2.38, -0.235);                                                                                                // omurga
+  const pack = P(bx(0.44, 0.42, 0.16), joint, 0, 2.44, -0.3); for (const s of [-1, 1]) { P(bx(0.13, 0.3, 0.05), shell, s * 0.13, 2.44, -0.385); P(bx(0.025, 0.24, 0.02), lit, s * 0.13, 2.44, -0.415); }
+  p.orb = P(bx(0.07, 0.07, 0.03), lit, 0, 2.72, -0.34);                                                                                           // sırt ışığı: ult doldukça büyür
+  for (const s of [-1, 1]) { P(sph(0.13), joint, s * 0.46, 2.62, 0); const pd = P(new THREE.SphereGeometry(0.2, 18, 10, 0, TAU, 0, Math.PI / 2), shell, s * 0.5, 2.64, 0); pd.scale.set(0.9, 0.8, 1); pd.rotation.z = -s * 0.35; }
+  // sol kol: tüfeğin ön kabzasına uzanır
+  p.armL = new THREE.Group(); p.armL.position.set(-0.46, 2.62, 0); p.armL.rotation.set(-0.95, 0, 0.42); body.add(p.armL);
+  P(UARM, shell, 0, -0.5, 0, p.armL); P(sph(0.08), joint, 0, -0.53, 0, p.armL);
+  const fl = new THREE.Group(); fl.position.set(0, -0.53, 0); fl.rotation.x = -0.75; p.armL.add(fl); P(FARM, shell, 0, -0.44, 0, fl); P(bx(0.11, 0.13, 0.1), joint, 0, -0.5, 0, fl);
+  // sağ kol + tüfek: omuzdan geri teper
+  p.gun = new THREE.Group(); p.gun.position.set(0.46, 2.62, 0); body.add(p.gun);
+  const ar = new THREE.Group(); ar.rotation.x = -0.8; p.gun.add(ar); P(UARM, shell, 0, -0.5, 0, ar); P(sph(0.08), joint, 0, -0.53, 0, ar);
+  const fr = new THREE.Group(); fr.position.set(0, -0.53, 0); fr.rotation.x = -0.77; ar.add(fr); P(FARM, shell, 0, -0.44, 0, fr); P(bx(0.11, 0.13, 0.1), joint, 0, -0.5, 0, fr);
+  const rf = new THREE.Group(); rf.position.set(-0.2, -0.28, 0.72); p.gun.add(rf);                                                               // tüfek: namlu +z
+  P(bx(0.11, 0.2, 0.9), joint, 0, 0, 0.1, rf); P(bx(0.08, 0.13, 0.42), joint, 0, 0.02, -0.52, rf); P(bx(0.07, 0.2, 0.1), joint, 0, -0.17, -0.12, rf); P(bx(0.07, 0.14, 0.09), joint, 0, -0.14, 0.34, rf);
+  const brl = P(cyl(0.035, 0.75), shell, 0, 0.03, 0.9, rf); brl.rotation.x = Math.PI / 2; P(bx(0.06, 0.07, 0.3), shell, 0, 0.15, 0.05, rf);
+  for (let k = 0; k < 3; k++) P(bx(0.125, 0.05, 0.035), lit, 0, 0.02, 0.2 + k * 0.13, rf); const mz = P(cyl(0.05, 0.12), lit, 0, 0.03, 1.3, rf); mz.rotation.x = Math.PI / 2;
+  // baş: yumurta biçimli kafatası, parlak siyah vizör, ince ışık çizgisi
+  P(cyl(0.075, 0.16), joint, 0, 2.84, 0);
+  p.head = new THREE.Group(); p.head.position.set(0, 2.9, 0); body.add(p.head);
+  const skull = P(lathe([[0.0, 0], [0.12, 0.02], [0.2, 0.14], [0.228, 0.3], [0.2, 0.43], [0.12, 0.51], [0.0, 0.53]]), shell, 0, 0, 0, p.head); skull.scale.set(0.94, 1, 1.06);
+  const face = P(sph(0.19), visor, 0, 0.255, 0.125, p.head); face.scale.set(0.84, 1.0, 0.72); P(bx(0.15, 0.014, 0.02), white, 0, 0.3, 0.262, p.head);
+  for (const s of [-1, 1]) { const ear = P(cyl(0.06, 0.05), joint, s * 0.208, 0.27, 0, p.head); ear.rotation.z = Math.PI / 2; }
+  P(bx(0.03, 0.3, 0.26), joint, 0, 0.36, -0.07, p.head);                                                                                          // tepe sırtı
+  if (id !== 0) { p.label = makeLabel(p.name, hex(col)); p.label.position.y = 4.2; p.label.scale.set(4.5, 1.1, 1); g.add(p.label); }
   p.mesh = g; g.visible = id === 0; scene.add(g);
   calcStats(p);
   return p;
@@ -831,8 +850,8 @@ function fireHero(p, tgt) {
   const dmg = core.dmg * p.stats.dmg * dmgMult(p) * (m.extra ? (n0 + m.extra * m.extraEff) / n : 1);
   let dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1;
   p.faceYaw = Math.atan2(dx, dz); p.faceT = 0.5; p.recoil = 1;
-  const mx = p.x + Math.sin(p.faceYaw) * 1.7 + Math.cos(p.faceYaw) * 0.6, mz = p.z + Math.cos(p.faceYaw) * 1.7 - Math.sin(p.faceYaw) * 0.6;
-  spawnFx(mx, 2.2, mz, core.kind === 'beam' ? 0.5 : 1.0, col, 0.07);          // namlu parlaması
+  const mx = p.x + Math.sin(p.faceYaw) * 2.3 - Math.cos(p.faceYaw) * 0.33, mz = p.z + Math.cos(p.faceYaw) * 2.3 + Math.sin(p.faceYaw) * 0.33;
+  spawnFx(mx, 2.6, mz, core.kind === 'beam' ? 0.5 : 1.0, col, 0.07);          // namlu parlaması
   if (me) { SFX.shoot(core.kind, el); FEEL.shake(CFG.feel.trauma.shot * (core.kind === 'beam' ? 0.3 : core.aoe || core.pellets ? 2 : 1)); FEEL.kick += core.kind === 'beam' ? 0.05 : core.aoe || core.pellets ? 0.45 : 0.22; }
   if (core.kind === 'proj') {
     const tt = d / core.speed, sp = tgt.stunT > 0 ? 0 : tgt.speed * (tgt.slowT > 0 ? 1 - tgt.slowF : 1);
@@ -1074,10 +1093,10 @@ function updateHeroCommon(p, dt) {
   p.walk += dt * (p.moving ? (p.sprinting ? 15 : 10) : 0);
   const sw = p.moving ? Math.sin(p.walk) : 0;
   p.legs[0].rotation.x = sw * 0.65; p.legs[1].rotation.x = -sw * 0.65; p.shins[0].rotation.x = Math.max(0, -sw) * 0.9; p.shins[1].rotation.x = Math.max(0, sw) * 0.9;
-  p.armL.rotation.x = -sw * 0.5; p.head.rotation.y = Math.sin(G.time * 0.9 + p.id) * (p.moving ? 0.05 : 0.22); p.body.rotation.y = sw * 0.06;
+  p.armL.rotation.x = -0.95 + sw * 0.04 - p.recoil * 0.05; p.head.rotation.y = Math.sin(G.time * 0.9 + p.id) * (p.moving ? 0.05 : 0.22); p.body.rotation.y = sw * 0.06;
   p.body.position.y = p.moving ? Math.abs(sw) * 0.1 : Math.sin(G.time * 2 + p.id) * 0.03; p.body.rotation.x = -p.recoil * 0.1 + (p.sprinting ? 0.18 : 0);
-  p.gun.position.z = 0.1 - p.recoil * 0.3; p.gun.rotation.x = -p.recoil * 0.22;
-  p.orb.position.y = 3.1 + Math.sin(G.time * 3 + p.id) * 0.15; p.orb.rotation.y += dt * 3; p.orb.scale.setScalar(p.ult >= CFG.ult.need ? 1.8 + Math.sin(G.time * 10) * 0.3 : 0.6 + p.ult / 100 * 0.7);
+  p.gun.position.z = -p.recoil * 0.16; p.gun.rotation.x = -p.recoil * 0.1;
+  p.orb.scale.setScalar(p.ult >= CFG.ult.need ? 1.8 + Math.sin(G.time * 10) * 0.3 : 0.6 + p.ult / 100 * 0.7);
   let dy = p.faceYaw - p.mesh.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.mesh.rotation.y += dy * Math.min(1, dt * 18);
   p.mesh.position.set(p.x, 0, p.z);
 }
