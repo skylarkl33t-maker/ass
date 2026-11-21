@@ -4,13 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Altıgen Rezonans</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap">
 <style>
   :root{color-scheme:dark}
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;overflow:hidden;background:#07080f;color:#e8eef7;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none;-webkit-user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;background:#07080f;color:#e8eef7;font-family:'Rajdhani',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:500;user-select:none;-webkit-user-select:none}
   #c{position:fixed;inset:0;width:100%;height:100%;display:block}
-  #hud{position:fixed;inset:0;pointer-events:none;font-size:13px}
-  .panel{background:rgba(10,9,12,.72);border:1px solid rgba(255,90,60,.28);border-radius:8px;padding:8px 10px;backdrop-filter:blur(3px)}
+  #hud{position:fixed;inset:0;pointer-events:none;font-size:14px}
+  #roundTxt,#banner,#comboBanner,#streak,.box h1,button.go,.slot b,#board h4{font-family:'Orbitron',system-ui,sans-serif}
+  .panel{background:linear-gradient(180deg,rgba(12,18,30,.82),rgba(6,9,16,.82));border:1px solid rgba(90,216,255,.32);border-left:3px solid #5ad8ff;padding:8px 12px;backdrop-filter:blur(3px);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
   #vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,30,40,.55) 100%);opacity:0;transition:opacity .25s}
   #top{position:absolute;top:10px;left:50%;transform:translateX(-50%);text-align:center;min-width:340px}
   #roundTxt{font-weight:700;font-size:15px;letter-spacing:.5px}
@@ -25,7 +27,7 @@
   #board .pb{height:7px;background:#161c2b;border-radius:4px;overflow:hidden}
   #board .pb i{display:block;height:100%;background:#39d0ff}
   #board .lk{text-align:right}
-  #mini{position:absolute;right:10px;bottom:10px;border-radius:8px;background:rgba(10,9,12,.72);border:1px solid rgba(255,90,60,.28)}
+  #mini{position:absolute;right:10px;bottom:10px;background:rgba(6,9,16,.8);border:1px solid rgba(90,216,255,.32)}
   #bottom{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:stretch}
   .slot{min-width:108px;text-align:center}
   .slot b{display:block;font-size:10px;color:#8fa0ba;letter-spacing:.6px}
@@ -65,21 +67,31 @@
   .pop span{display:block;font-weight:900;font-size:14px;text-shadow:0 0 3px #000,0 1px 2px #000;white-space:nowrap;animation:popin .14s ease-out}
   .pop.crit span{color:#ffd23a;font-size:22px;font-style:italic}.pop.combo span{color:#ff9d3a;font-size:19px;font-style:italic}
   @keyframes popin{from{transform:scale(2.1)}to{transform:scale(1)}}
-  #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(4,5,10,.84);pointer-events:auto}
+  #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(8,14,26,.88),rgba(2,3,6,.95));pointer-events:auto}
   #overlay.hide{display:none}
-  .box{max-width:900px;width:92%;text-align:center}
-  .box h1{margin:0 0 6px;font-size:36px;letter-spacing:2px}
+  .box{max-width:1000px;width:94%;text-align:center;max-height:100%;overflow-y:auto;padding:14px 0}
+  .box h1{margin:0 0 6px;font-size:32px;letter-spacing:3px;color:#5ad8ff;text-shadow:0 0 18px rgba(90,216,255,.5)}
   .box p{color:#b9c6da;line-height:1.55;margin:6px 0}
   .keys{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 18px;text-align:left;margin:14px auto;max-width:600px;font-size:13px}
   .keys b{color:#ffd76a}
-  button.go{pointer-events:auto;margin-top:12px;padding:12px 34px;font-size:17px;font-weight:800;border:0;border-radius:8px;background:#39d0ff;color:#04121c;cursor:pointer}
-  .cards{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:16px}
-  .card{width:190px;padding:14px 12px;border-radius:10px;background:#121829;border:2px solid #2b3850;cursor:pointer;text-align:center;transition:transform .12s,border-color .12s,box-shadow .12s}
-  .card:hover{transform:translateY(-6px) scale(1.03);border-color:#39d0ff;box-shadow:0 0 22px rgba(57,208,255,.35)}
-  .card .t{font-size:10px;letter-spacing:1px;color:#8fa0ba}
-  .card .n{font-size:17px;font-weight:800;margin:6px 0}
-  .card .d{font-size:12px;color:#b9c6da;min-height:48px}
-  .card .a{margin-top:8px;font-size:11px;font-weight:800;color:#ffd76a}
+  button.go{pointer-events:auto;margin-top:12px;padding:12px 38px;font-size:16px;font-weight:800;letter-spacing:2px;border:0;background:#5ad8ff;color:#04121c;cursor:pointer;clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%)}
+  .cards{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+  .card{--c:#5ad8ff;position:relative;display:flex;flex-direction:column;width:208px;padding:0 0 12px;background:linear-gradient(180deg,#141b2c,#0a0e18);border:1px solid var(--c);cursor:pointer;text-align:left;transition:transform .14s,background .14s,filter .14s;clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));animation:cardin .35s backwards}
+  .card:nth-child(2){animation-delay:.07s}.card:nth-child(3){animation-delay:.14s}.card:nth-child(4){animation-delay:.21s}
+  @keyframes cardin{from{opacity:0;transform:translateY(28px) scale(.94)}}
+  .card:hover{transform:translateY(-8px) scale(1.04);background:linear-gradient(180deg,color-mix(in srgb,var(--c) 26%,#141b2c),#0a0e18);filter:brightness(1.12)}
+  .card .hd{display:flex;justify-content:space-between;align-items:center;padding:6px 20px 6px 10px;background:color-mix(in srgb,var(--c) 22%,transparent);font-size:11px;letter-spacing:1.5px;color:var(--c);font-weight:700}
+  .card .key{border:1px solid var(--c);padding:0 6px;border-radius:3px}
+  .card .ic{font-size:40px;line-height:1.1;text-align:center;margin:12px 0 2px;color:var(--c);filter:drop-shadow(0 0 10px var(--c))}
+  .card .n{font-family:'Orbitron',system-ui,sans-serif;font-size:15px;font-weight:800;text-align:center;margin:4px 8px 2px}
+  .card .pips{text-align:center;color:var(--c);letter-spacing:2px;font-size:11px;margin:3px 0 8px;white-space:pre}.card .pips i{font-style:normal;color:#fff}
+  .card .d{font-size:13px;color:#b9c6da;min-height:56px;padding:0 12px 8px;line-height:1.35;flex:1}
+  .card .st:last-of-type{margin-bottom:9px}
+  .card .st{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 12px;border-top:1px solid rgba(255,255,255,.08);font-variant-numeric:tabular-nums}
+  .card .st span{color:#8fa0ba}.card .st b{color:#cfd8e6;white-space:nowrap}.card .st b i{font-style:normal;color:#8dffb0}
+  .card .a{margin:auto 12px 0 22px;padding:4px;text-align:center;font-size:11px;font-weight:800;letter-spacing:.8px;color:#06101a;background:var(--c)}
+  .chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}.chip{font-size:12px;padding:3px 10px;border:1px solid rgba(90,216,255,.3);color:#8fa0ba;letter-spacing:.5px}.chip b{color:#fff}
+  button.re{pointer-events:auto;margin-top:16px;padding:7px 20px;background:transparent;border:1px solid #5ad8ff;color:#5ad8ff;font:inherit;font-weight:700;letter-spacing:1px;cursor:pointer}button.re:hover:not(:disabled){background:rgba(90,216,255,.15)}button.re:disabled{opacity:.35;cursor:default}
   table.end{margin:12px auto;border-collapse:collapse;font-variant-numeric:tabular-nums}
   table.end td,table.end th{padding:4px 14px;font-size:13px}table.end tr.me td{color:#ffd76a;font-weight:700}
   @media (max-width:900px){#board{transform:scale(.8);transform-origin:top left}#feed{display:none}}
@@ -132,8 +144,8 @@
 
 /* ============================ 1. CONFIG / DATA ============================ */
 const CFG = {
-  arena:   { coreAl: 40, spawnAl: 110, postAl: 56, laneHalfW: 10, coreR: 3.5 },   // şerit-yerel: al = merkezden uzaklık, la = yanal
-  zone:    { aMin: 47, aMax: 76, lat: 8.5 },                 // oyuncunun sabit hareket alanı
+  arena:   { coreAl: 40, spawnAl: 110, postAl: 56, laneHalfW: 8.5, coreR: 3.2 },   // şerit-yerel: al = merkezden uzaklık, la = yanal
+  zone:    { aMin: 47, aMax: 76, lat: 7 },                 // oyuncunun sabit hareket alanı
   core:    { hp: 30 },                                       // herkesin KENDİ çekirdeği
   rounds:  20, bossRounds: [5, 10, 15, 20], prepTime: 5,
   player:  { walk: 8, sprint: 13, stamina: 100, staminaDrain: 22, staminaRegen: 16 },
@@ -143,7 +155,7 @@ const CFG = {
   ult:     { need: 100, perKill: 3, streakBonus: 0.03, streakCap: 20, radius: 17, dmg: 170, kb: 7 },
   wave:    { baseCount: 8, countPer: 2, baseHp: 42, hpGrowth: 1.15, spawnWindow: 24, speed: 3.2 },
   flawless:{ dmgPerChain: 0.08, maxChain: 5, extraCards: 1 },
-  bot:     { dmgBonus: 1.35, wander: 6 },
+  bot:     { dmgBonus: 1.35, wander: 5 },
 
   feel:    { streakWindow: 2.6, shakeMax: 0.9, shakeDecay: 2.2, hitstopScale: 0.05, kickDecay: 9,
              streakShake: { from: 5, cap: 30, floor: 0.24, bonus: 1.1 },   // seri büyüdükçe sürekli titreşim (tavanlı)
@@ -263,7 +275,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x0a0f1a, 70, 260);
-const camera = new THREE.PerspectiveCamera(80, 1, 0.3, 700);
+const camera = new THREE.PerspectiveCamera(88, 1, 0.3, 700);
 scene.add(new THREE.HemisphereLight(0x9fb4d8, 0x1a1c26, 0.62));
 const sun = new THREE.DirectionalLight(0xcfdcff, 0.8); sun.position.set(50, 90, 30); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005;
@@ -367,7 +379,7 @@ function buildArena() {
   scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xcfd8ff, size: 1.6, sizeAttenuation: false, fog: false })));
   for (const q of G.players) LANES.push({ cx: q.dir[0] * A.coreAl, cz: q.dir[1] * A.coreAl, flash: 0 });
   const p = G.human, col = ELEMENTS[p.el].color, g = new THREE.Group(); g.rotation.y = laneAng(0); scene.add(g);     // grup-yerel: x = la, z = al
-  const a0 = A.coreAl - 9, a1 = A.spawnAl + 6, len = a1 - a0, mid = (a0 + a1) / 2, hw = A.laneHalfW + 1.5, H = 12.5;
+  const a0 = A.coreAl - 9, a1 = A.spawnAl + 6, len = a1 - a0, mid = (a0 + a1) / 2, hw = A.laneHalfW + 1.5, H = 10.5;
   const tex = metalTexture(); tex.repeat.set(3, Math.round(len / (hw * 2)) * 3);
   const deckM = new THREE.MeshPhongMaterial({ map: tex, shininess: 40, specular: 0x232c3c }), steel = mat(0x3a4152), dark = mat(0x171b28), lit = new THREE.MeshBasicMaterial({ color: col }), cyan = new THREE.MeshBasicMaterial({ color: 0x5ad8ff });
   steel.shininess = 60; steel.specular.setHex(0x55668a);
@@ -411,8 +423,8 @@ function buildArena() {
     for (const s of [-1, 1]) {
       const ry = -s * Math.PI / 2, wx = s * (hw - 0.06);
       if (k % 3 === 1) {                                                                                   // gözlem penceresi: kayan yıldız alanı
-        const win = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 4.6), starM); win.position.set(wx, 6.9, bay); win.rotation.y = ry; g.add(win);
-        box(0.5, 0.5, 7.4, s * (hw - 0.2), 9.4, bay, steel); box(0.5, 0.5, 7.4, s * (hw - 0.2), 4.4, bay, steel); box(0.5, 5.4, 0.5, s * (hw - 0.2), 6.9, bay - 3.5, steel); box(0.5, 5.4, 0.5, s * (hw - 0.2), 6.9, bay + 3.5, steel); box(0.3, 4.6, 0.2, s * (hw - 0.15), 6.9, bay, steel);
+        const win = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 4.6), starM); win.position.set(wx, 5.6, bay); win.rotation.y = ry; g.add(win);
+        box(0.5, 0.5, 7.4, s * (hw - 0.2), 8.1, bay, steel); box(0.5, 0.5, 7.4, s * (hw - 0.2), 3.1, bay, steel); box(0.5, 5.4, 0.5, s * (hw - 0.2), 5.6, bay - 3.5, steel); box(0.5, 5.4, 0.5, s * (hw - 0.2), 5.6, bay + 3.5, steel); box(0.3, 4.6, 0.2, s * (hw - 0.15), 5.6, bay, steel);
       } else if (k % 3 === 2) {                                                                            // veri ekranı: akan satırlar
         const scr = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 3), dataM); scr.position.set(s * (hw - 0.5), 5.6, bay); scr.rotation.y = ry; scr.rotation.x = 0; g.add(scr); box(0.3, 3.5, 5.1, s * (hw - 0.25), 5.6, bay, dark);
       } else {                                                                                             // dönen havalandırma pervanesi
@@ -425,6 +437,9 @@ function buildArena() {
   }
   // uzak uç: duvar yok — açıklığın tamamını kara delik kaplar
   for (const s of [-1, 1]) box(1.8, H, 2.4, s * (hw - 0.9), H / 2, a1, steel);
+  const frameMats = [0, 1, 2].map(() => new THREE.MeshBasicMaterial({ color: 0x331a08 }));                 // üst, sol, sağ çerçeve ışıkları
+  box(hw * 2 - 4, 0.35, 0.35, 0, H - 1.7, a1 - 1.3, frameMats[0]); box(0.35, H - 2, 0.35, hw - 2, H / 2 - 0.3, a1 - 1.3, frameMats[1]); box(0.35, H - 2, 0.35, -(hw - 2), H / 2 - 0.3, a1 - 1.3, frameMats[2]);
+  for (const s of [-1, 1]) for (let q = 0; q < 3; q++) { const cl = box(0.9, 0.5, 3.2, s * (hw - 1.7), 2 + q * 3, a1 - 2.2, dark); cl.rotation.y = s * 0.5; }
   box(hw * 2, 1.5, 2.4, 0, H - 0.75, a1, steel); box(hw * 2, 0.7, 2.4, 0, 0.05, a1, dark);
   const pr3 = new THREE.Mesh(new THREE.TorusGeometry(H / 2 - 1.1, 0.14, 4, 44, Math.PI * 1.4), cyan); pr3.position.set(0, H / 2, a1); g.add(pr3);
   const BY = H / 2, portal = new THREE.Group(); portal.position.set(0, BY, a1 + 15); portal.scale.setScalar(1.45); g.add(portal);
@@ -441,11 +456,11 @@ function buildArena() {
   const base = new THREE.Mesh(new THREE.CylinderGeometry(A.coreR, A.coreR + 1.3, 1.4, 6), steel); base.position.set(0, 0.7, A.coreAl); base.castShadow = true; g.add(base);
   const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.7), mat(col, col, 0.9)); core.scale.y = 1.6; core.position.set(0, 4.8, A.coreAl); g.add(core);
   const ring = new THREE.Mesh(new THREE.TorusGeometry(2.9, 0.08, 4, 28), lit); ring.position.copy(core.position); g.add(ring);
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.8, 5, 8, 1, true), glow(col, 0.2)); beam.position.set(0, 9, A.coreAl); g.add(beam);
-  const light = new THREE.PointLight(col, 0.9, 45); light.position.set(0, 9, A.coreAl); g.add(light);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.8, 3, 8, 1, true), glow(col, 0.2)); beam.position.set(0, 7.9, A.coreAl); g.add(beam);
+  const light = new THREE.PointLight(col, 0.9, 45); light.position.set(0, H - 1.5, A.coreAl); g.add(light);
   const l2 = new THREE.PointLight(0xbfd8ff, 0.75, 75); l2.position.set(0, H - 1.5, mid); g.add(l2);
   const l3 = new THREE.PointLight(0xff8a3a, 1.8, 85); l3.position.set(0, BY, a1 - 5); g.add(l3);
-  SC = { core, ring, beam, veil, pr1, pr2, pr3, light, col, ribMats, fans, pulses, ceilMats, starTex, dataTex, chevTex, a0, a1, len, hw, H };
+  SC = { frameMats, l3, flash: [0, 0, 0], portalW: { x: p.dir[0] * (a1 + 2), y: H / 2, z: p.dir[1] * (a1 + 2) }, core, ring, beam, veil, pr1, pr2, pr3, light, col, ribMats, fans, pulses, ceilMats, starTex, dataTex, chevTex, a0, a1, len, hw, H };
   // gölge
   const d = p.dir; sun.target.position.set(d[0] * mid, 0, d[1] * mid); scene.add(sun.target); sun.position.set(d[0] * mid + 25, 95, d[1] * mid + 18);
   Object.assign(sun.shadow.camera, { left: -52, right: 52, top: 52, bottom: -52, near: 10, far: 220 }); sun.shadow.camera.updateProjectionMatrix();
@@ -464,40 +479,42 @@ function makePlayer(id, el) {
     stats: {}, modv: {}, cd: 0, ult: 0, flip: false, stamina: CFG.player.stamina, exhausted: false,
     kills: 0, dmgDone: 0, combos: 0, leaks: 0, recoil: 0, walk: 0, moving: false, faceT: 0, wp: Math.random() * 9,
   };
-  // humanoid savaş robotu: gunmetal zırh plakaları, krom eklemler ve pistonlar, kızıl gözler, sağ kolda plazma tüfeği
-  const g = new THREE.Group(), body = new THREE.Group(); g.add(body); p.body = body; g.scale.setScalar(1.15);
-  const chrome = new THREE.MeshPhongMaterial({ color: 0x7f8898, specular: 0x66728a, shininess: 60, flatShading: true }), armor = new THREE.MeshPhongMaterial({ color: 0x2a303d, specular: 0x445066, shininess: 45, flatShading: true });
-  const gunM = mat(0x16191f), lit = new THREE.MeshBasicMaterial({ color: col }), eyeM = new THREE.MeshBasicMaterial({ color: 0xff2a14 });
+  // ince yapılı humanoid robot: pürüzsüz gümüş kabuklar, siyah eklemler, koyu vizörlü yuvarlak baş, göğüste kırmızı ışık
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body); p.body = body; g.scale.setScalar(1.12);
+  const shell = new THREE.MeshPhongMaterial({ color: 0x8e949f, specular: 0x3a4250, shininess: 45 }), joint = new THREE.MeshPhongMaterial({ color: 0x14161c, specular: 0x55606e, shininess: 60 });
+  const lit = new THREE.MeshBasicMaterial({ color: col }), red = new THREE.MeshBasicMaterial({ color: 0xff2a1a });
   const P = (geo, m, x, y, z, par) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; (par || body).add(o); return o; };
-  const cyl = (r, h, r2) => new THREE.CylinderGeometry(r, r2 == null ? r : r2, h, 6), bx = (w, h, d) => new THREE.BoxGeometry(w, h, d), ico = r => new THREE.IcosahedronGeometry(r, 0);
+  const cyl = (r, h, r2) => new THREE.CylinderGeometry(r, r2 == null ? r : r2, h, 14), sph = r => new THREE.SphereGeometry(r, 14, 10), bx = (w, h, d) => new THREE.BoxGeometry(w, h, d);
   p.legs = []; p.shins = [];
   for (const s of [-1, 1]) {                                // bacak: kalçadan ve dizden eklemli
-    const L = new THREE.Group(); L.position.set(s * 0.24, 1.36, 0); g.add(L); p.legs.push(L);
-    P(ico(0.15), chrome, 0, 0, 0, L); P(cyl(0.15, 0.6, 0.11), armor, 0, -0.34, 0, L); P(cyl(0.035, 0.5), chrome, 0, -0.34, -0.14, L);
-    const K = new THREE.Group(); K.position.set(0, -0.68, 0); L.add(K); p.shins.push(K);
-    P(ico(0.13), chrome, 0, 0, 0, K); P(bx(0.2, 0.2, 0.1), armor, 0, 0, 0.12, K); P(cyl(0.11, 0.56, 0.08), armor, 0, -0.33, 0, K); P(cyl(0.03, 0.46), chrome, 0, -0.33, 0.11, K);
-    P(bx(0.22, 0.12, 0.46), armor, 0, -0.63, 0.08, K); P(bx(0.2, 0.06, 0.16), chrome, 0, -0.6, 0.3, K);
+    const L = new THREE.Group(); L.position.set(s * 0.2, 1.42, 0); g.add(L); p.legs.push(L);
+    P(sph(0.14), joint, 0, 0, 0, L); P(cyl(0.155, 0.56, 0.115), shell, 0, -0.36, 0, L);
+    const K = new THREE.Group(); K.position.set(0, -0.72, 0); L.add(K); p.shins.push(K);
+    P(sph(0.115), joint, 0, 0, 0, K); P(cyl(0.125, 0.54, 0.08), shell, 0, -0.34, 0, K); P(sph(0.075), joint, 0, -0.63, 0, K);
+    const ft = P(sph(0.13), shell, 0, -0.68, 0.09, K); ft.scale.set(0.85, 0.45, 1.7);
   }
-  P(bx(0.6, 0.24, 0.34), armor, 0, 1.4, 0); P(cyl(0.1, 0.34), chrome, 0, 1.66, 0);                                   // kalça + bel
-  const chest = P(cyl(0.46, 0.62, 0.3), armor, 0, 2.1, 0); chest.scale.z = 0.7;                                      // V gövde
-  P(bx(0.5, 0.3, 0.12), chrome, 0, 2.16, 0.24); for (let k = 0; k < 3; k++) P(bx(0.34 - k * 0.06, 0.04, 0.05), gunM, 0, 1.9 - k * 0.07, 0.2);
-  P(new THREE.OctahedronGeometry(0.11), lit, 0, 2.16, 0.32); P(bx(0.3, 0.4, 0.16), armor, 0, 2.12, -0.26); P(bx(0.06, 0.3, 0.04), lit, 0, 2.12, -0.35);   // reaktör + sırt ünitesi
-  for (const s of [-1, 1]) { const sh = P(ico(0.24), armor, s * 0.56, 2.36, 0); sh.scale.set(1.1, 0.8, 1.1); P(bx(0.1, 0.04, 0.3), lit, s * 0.6, 2.5, 0); }
-  p.armL = new THREE.Group(); p.armL.position.set(-0.58, 2.28, 0); body.add(p.armL);                                 // sol kol: omuzdan sallanır
-  P(cyl(0.1, 0.5, 0.08), armor, 0, -0.3, 0, p.armL); P(ico(0.1), chrome, 0, -0.58, 0, p.armL);
-  const fa = P(cyl(0.08, 0.46, 0.07), armor, 0, -0.8, 0.1, p.armL); fa.rotation.x = -0.45; P(bx(0.13, 0.16, 0.14), chrome, 0, -1.02, 0.22, p.armL);
-  P(cyl(0.07, 0.16), chrome, 0, 2.5, 0);
-  p.head = new THREE.Group(); p.head.position.set(0, 2.76, 0); body.add(p.head);
-  const skull = P(ico(0.25), chrome, 0, 0, 0, p.head); skull.scale.set(0.95, 1.1, 1.08);
-  P(bx(0.44, 0.16, 0.34), armor, 0, 0.16, -0.03, p.head); P(bx(0.28, 0.11, 0.22), chrome, 0, -0.2, 0.08, p.head); P(bx(0.36, 0.05, 0.1), gunM, 0, 0.07, 0.2, p.head);
-  for (const s of [-1, 1]) P(new THREE.SphereGeometry(0.05, 8, 6), eyeM, s * 0.1, 0, 0.24, p.head);
-  P(cyl(0.012, 0.3), chrome, 0.2, 0.3, -0.08, p.head);
-  p.gun = new THREE.Group(); p.gun.position.set(0.58, 2.2, 0.1); body.add(p.gun);                                    // sağ kol ileri uzanır, tüfek ön kola monte
-  const ua = P(cyl(0.09, 0.5), armor, 0, 0, 0.25, p.gun); ua.rotation.x = Math.PI / 2; P(ico(0.1), chrome, 0, 0, 0.52, p.gun);
-  P(bx(0.22, 0.28, 1.3), gunM, 0, -0.04, 1.0, p.gun); P(bx(0.07, 0.07, 1.5), chrome, 0, 0.13, 1.05, p.gun);
-  for (let k = 0; k < 3; k++) P(bx(0.27, 0.32, 0.06), lit, 0, -0.04, 0.66 + k * 0.3, p.gun);
-  P(bx(0.12, 0.12, 0.3), lit, 0, -0.04, 1.78, p.gun);
-  p.orb = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), lit); p.orb.position.set(-0.85, 3.1, -0.4); g.add(p.orb);       // omuz dronu: ult göstergesi
+  const pel = P(sph(0.27), shell, 0, 1.46, 0); pel.scale.set(1.05, 0.62, 0.8); P(bx(0.16, 0.2, 0.2), joint, 0, 1.4, 0.1);                     // kalça
+  for (let k = 0; k < 3; k++) P(cyl(0.17 - k * 0.012, 0.09, 0.16 - k * 0.012), joint, 0, 1.63 + k * 0.1, 0);                               // boğumlu siyah bel
+  const chest = P(cyl(0.4, 0.5, 0.25), shell, 0, 2.14, 0); chest.scale.z = 0.66; const cht = P(sph(0.4), shell, 0, 2.38, 0); cht.scale.set(1, 0.34, 0.66);   // V göğüs
+  P(bx(0.2, 0.36, 0.06), joint, 0, 2.08, 0.25); P(sph(0.05), red, 0, 2.2, 0.29);                                                              // göğüs paneli + kırmızı ışık
+  const pk = P(bx(0.34, 0.4, 0.14), joint, 0, 2.14, -0.26); P(bx(0.05, 0.26, 0.04), lit, 0, 2.14, -0.34);                                     // sırt ünitesi (element rengi)
+  for (const s of [-1, 1]) { P(sph(0.15), joint, s * 0.47, 2.36, 0); const cap = P(sph(0.17), shell, s * 0.5, 2.42, 0); cap.scale.set(1, 0.6, 1); }
+  p.armL = new THREE.Group(); p.armL.position.set(-0.5, 2.34, 0); body.add(p.armL);                                                           // sol kol: omuzdan sallanır
+  P(cyl(0.1, 0.46, 0.08), shell, 0, -0.32, 0, p.armL); P(sph(0.085), joint, 0, -0.58, 0, p.armL);
+  const fa = P(cyl(0.085, 0.42, 0.06), shell, 0, -0.78, 0.08, p.armL); fa.rotation.x = -0.4; P(sph(0.075), joint, 0, -0.99, 0.17, p.armL);
+  P(cyl(0.07, 0.16), joint, 0, 2.52, 0);
+  p.head = new THREE.Group(); p.head.position.set(0, 2.8, 0); body.add(p.head);
+  const skull = P(sph(0.25), shell, 0, 0, 0, p.head); skull.scale.set(0.92, 1.12, 1);
+  const face = P(sph(0.22), joint, 0, -0.01, 0.07, p.head); face.scale.set(0.88, 0.95, 0.9);                                                  // koyu vizör yüz
+  P(bx(0.2, 0.025, 0.02), red, 0, 0.04, 0.27, p.head);                                                                                        // göz şeridi
+  for (const s of [-1, 1]) { const ear = P(cyl(0.07, 0.05), joint, s * 0.23, 0, 0, p.head); ear.rotation.z = Math.PI / 2; }
+  p.gun = new THREE.Group(); p.gun.position.set(0.5, 2.3, 0.08); body.add(p.gun);                                                             // sağ kol ileri uzanır, tüfek ön kola monte
+  const ua = P(cyl(0.095, 0.46, 0.08), shell, 0, 0, 0.26, p.gun); ua.rotation.x = Math.PI / 2; P(sph(0.085), joint, 0, 0, 0.52, p.gun);
+  const fr = P(cyl(0.08, 0.4, 0.07), shell, 0, 0, 0.74, p.gun); fr.rotation.x = Math.PI / 2;
+  P(bx(0.2, 0.24, 1.1), joint, 0, -0.16, 1.05, p.gun); P(bx(0.07, 0.07, 1.3), shell, 0, -0.02, 1.1, p.gun);
+  for (let k = 0; k < 3; k++) P(bx(0.23, 0.27, 0.05), lit, 0, -0.16, 0.75 + k * 0.27, p.gun);
+  P(bx(0.11, 0.11, 0.26), lit, 0, -0.16, 1.7, p.gun);
+  p.orb = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), lit); p.orb.position.set(-0.85, 3.1, -0.4); g.add(p.orb);                          // omuz dronu: ult göstergesi
   if (id !== 0) { p.label = makeLabel(p.name, hex(col)); p.label.position.y = 4; p.label.scale.set(4.5, 1.1, 1); g.add(p.label); }
   p.mesh = g; g.visible = id === 0; scene.add(g);
   calcStats(p);
@@ -541,7 +558,8 @@ const creepPool = new Pool(CFG.pools.creeps, () => {
 });
 function spawnCreep(lane, type) {
   const c = creepPool.get(); if (!c) return;
-  const T = CREEPS[type], d = laneDir(lane), A = CFG.arena, off = rand(-A.laneHalfW, A.laneHalfW) * 0.85, R = A.spawnAl + rand(-3, 2), boss = type === 'boss';
+  const T = CREEPS[type], d = laneDir(lane), A = CFG.arena, boss = type === 'boss', side = Math.random() < 0.5 ? -1 : 1;
+  const off = boss ? 0 : side * A.laneHalfW * rand(0.5, 0.97), R = A.spawnAl + rand(-2, 3);          // karşı duvarın kenarlarından sızarlar
   c.active = true; c.type = type; c.lane = lane; c.T = T;
   c.x = d[0] * R + d[1] * off; c.z = d[1] * R - d[0] * off; c.tx = d[0] * A.coreAl; c.tz = d[1] * A.coreAl;
   c.d = Math.hypot(c.tx - c.x, c.tz - c.z); c.ux = (c.tx - c.x) / c.d; c.uz = (c.tz - c.z) / c.d;
@@ -559,7 +577,11 @@ function spawnCreep(lane, type) {
   c.bar.position.y = c.h; c.bar.visible = false; c.barW = boss ? 4 : 1; c.bar.scale.set(c.barW, boss ? 2 : 1, 1);
   c.mesh.position.set(c.x, 0, c.z); c.model.rotation.y = Math.atan2(c.ux, c.uz); c.model.scale.setScalar(0.01); c.mesh.visible = lane === 0;
   G.creeps.push(c);
-  if (lane === 0) spawnRing(c.x, c.z, boss ? 8 : 2.5, 0xff8a3a, 0.4);
+  if (lane === 0) {                                           // yırtılma efekti: kara delikten şimşek, ışık sütunu, çerçeve ışıkları parlar
+    const W = SC.portalW; spawnBeam(W.x, W.y, W.z, c.x, by + 1, c.z, 0xffc070, boss ? 0.9 : 0.22); spawnBeam(c.x, 0.1, c.z, c.x, SC.H - 0.4, c.z, 0xff8a3a, boss ? 1.6 : 0.4);
+    spawnFx(c.x, by, c.z, boss ? 8 : 2.8, 0xffa050, 0.32); spawnRing(c.x, c.z, boss ? 10 : 3.4, 0xff8a3a, 0.5); spawnDebris(c.x, by, c.z, boss ? 14 : 3, 6, 0, 0.5);
+    SC.flash[boss ? 0 : side < 0 ? 1 : 2] = 1; if (boss) { SC.flash[1] = SC.flash[2] = 1; FEEL.shake(0.5); }
+  }
 }
 function removeCreep(c) { c.active = false; c.mesh.visible = false; }
 
@@ -945,7 +967,7 @@ function botDraft(p) {
 const Input = { move: { x: 0, y: 0 }, look: { dx: 0, dy: 0 }, fire: false, sprint: false, actions: [], press(a) { this.actions.push(a); } };
 const DesktopSource = {
   keys: {}, noLock: false,    // imleç kilidi yoksa (gömülü çerçeve) fare hareketi doğrudan bakışa gider
-  bind: { KeyF: 'ult', KeyG: 'speed', KeyT: 'auto', KeyM: 'mute', KeyB: 'bloom', Digit1: 'card0', Digit2: 'card1', Digit3: 'card2', Digit4: 'card3' },
+  bind: { KeyF: 'ult', KeyG: 'speed', BracketLeft: 'fovDown', BracketRight: 'fovUp', Minus: 'fovDown', Equal: 'fovUp', KeyT: 'auto', KeyM: 'mute', KeyB: 'bloom', Digit1: 'card0', Digit2: 'card1', Digit3: 'card2', Digit4: 'card3' },
   init() {
     addEventListener('keydown', e => { if (e.repeat) return; this.keys[e.code] = true; const a = this.bind[e.code]; if (a) Input.press(a); if (e.code === 'Tab' || e.code === 'Space') e.preventDefault(); });
     addEventListener('keyup', e => { this.keys[e.code] = false; });
@@ -965,7 +987,7 @@ const DesktopSource = {
 };
 function lockPointer() { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { DesktopSource.noLock = true; }); } catch (e) { DesktopSource.noLock = true; } }
 
-const Cam = { yaw: 0, pitch: 0.13, dist: 5.6, shoulder: 2.0, height: 3.5, sens: 0.0023, fov: 80, baseFov: 80 };
+const Cam = { yaw: 0, pitch: 0.13, dist: 5.6, shoulder: 2.0, height: 3.5, sens: 0.0023, fov: 88, baseFov: 88 };
 const _v = new THREE.Vector3(), _dir = new THREE.Vector3();
 function updateCamera(dt) {
   const p = G.human;
@@ -1007,6 +1029,7 @@ function updateHuman(p, dt) {
     let err = null;
     if (a === 'ult') { if (!castUlt(p)) err = 'Ult hazır değil — öldürdükçe dolar.'; }
 
+    else if (a === 'fovUp' || a === 'fovDown') { Cam.baseFov = clamp(Cam.baseFov + (a === 'fovUp' ? 4 : -4), 60, 112); feed('Görüş açısı: <b>' + Cam.baseFov + '°</b>'); }
     else if (a === 'speed') { G.speed = G.speed % 3 + 1; feed('Oyun hızı: <b>x' + G.speed + '</b>'); }
     else if (a === 'unlock') { if (G.lock) { G.lock = false; feed('Kilit <b>KAPALI</b> — serbest nişan. Sağ tık / T: yeniden kilitlen.'); } }
     else if (a === 'lock' || a === 'auto') { G.lock = a === 'lock' ? true : !G.lock; feed('Hedef kilidi: <b>' + (G.lock ? 'AÇIK' : 'KAPALI') + '</b>'); }
@@ -1061,7 +1084,9 @@ function updateFx(dt) {
 function updateScenery(dt) {
   const t = G.time, S = SC, p = G.human, L = LANES[0], alarm = p.core / CFG.core.hp < 0.35;
   portalMat.uniforms.uTime.value = haloMat.uniforms.uTime.value = t;
-  S.pr1.rotation.z += dt * 1.6; S.pr2.rotation.z += dt * 0.9; S.pr3.rotation.z -= dt * 0.5;
+  let fmax = 0; for (let k = 0; k < 3; k++) { const f = S.flash[k] = Math.max(0, S.flash[k] - dt * 2.6); fmax = Math.max(fmax, f); S.frameMats[k].color.setRGB(0.2 + f * 0.8, 0.1 + f * 0.6, 0.03 + f * 0.25); }
+  S.l3.intensity = 1.8 + fmax * 3.2;
+  S.pr1.rotation.z += dt * 1.6; S.pr2.rotation.z += dt * 0.9; S.pr3.rotation.z -= dt * (0.5 + fmax * 5);
   S.core.rotation.y += dt * 0.8; S.core.position.y = 4.8 + Math.sin(t * 1.5) * 0.3; S.ring.rotation.x += dt * 1.1; S.ring.rotation.y += dt * 0.6;
   if (L.flash > 0) L.flash -= dt;
   const col = L.flash > 0 || (alarm && Math.sin(t * 8) > 0) ? 0xff3a3a : S.col;
@@ -1168,22 +1193,57 @@ function cardText(p, c) {
   const e = ELEMENTS[c.id], cb = COMBOS[comboKey(p.el, c.id)];
   return [e.icon + ' ' + e.name, 'Atışların ' + ELEMENTS[p.el].name + ' / ' + e.name + ' dönüşümlü gider → <b>' + cb.name + '</b> kombosu (x' + cb.mult + '). ' + e.tdesc + '.'];
 }
+const SLOT_C = { core: '#ff7a3a', mod: '#5ad8ff', passive: '#8dffb0', echo: '#c58bff' };
+const ICONS = { single: '◎', arc: '💥', beam: '🔦', chain: '⚡', scatter: '✸', pierce: '➹', ricochet: '↯', multi: '⫶', dot: '🔥', slow: '❄️', homing: '🎯',
+  power: '💪', haste: '⏩', reach: '📡', sharp: '👁️', brutal: '🗡️', charger: '🔋', mender: '🛠️', resonator: '🔊', impact: '🔨' };
+const PASS_LBL = { dmg: ['Hasar', 1], rate: ['Atış hızı', 1], range: ['Menzil', 1], crit: ['Kritik şansı', 1], critMult: ['Kritik hasarı', 1], ult: ['Ult dolumu', 1], combo: ['Kombo hasarı', 1], kb: ['Geri itme', 1], mend: ['Tur sonu onarım', 0] };
+const f1 = v => String(Math.round(v * 10) / 10);
+function modText(id, lvl) {
+  const m = MODS[id], ml = 1 + LVL.mod * (lvl - 1);
+  if (m.pierce) return 'Delme ' + Math.round(m.pierce * ml); if (m.bounce) return 'Sekme ' + Math.round(m.bounce * ml); if (m.extra) return '+' + (m.extra + lvl - 1) + ' mermi';
+  if (m.dotPct) return '%' + Math.round(m.dotPct * ml * 100) + '/sn yanık'; if (m.slow) return '%' + Math.round(Math.min(0.7, m.slow * (1 + LVL.modSlow * (lvl - 1))) * 100) + ' yavaş';
+  return 'Dönüş ' + f1(m.turn * ml);
+}
+/* Kartın sayısal etkisi: [etiket, şimdiki (yoksa null), seçince]. */
+function cardStats(p, c) {
+  const b = p.build, lv = b[c.slot + 'Lvl'], up = b[c.slot] === c.id, nl = up ? lv + 1 : lv, R = [];
+  if (c.slot === 'core') {
+    const d = CORES[c.id], cur = CORES[b.core], k = l => 1 + LVL.coreDmg * (l - 1), dps = (x, l) => x.dmg * (x.pellets || 1) * x.rate * k(l);
+    if (up) R.push(['Vuruş hasarı', f1(d.dmg * k(lv)), f1(d.dmg * k(nl))]); else { R.push(['Menzil', cur.range, d.range]); R.push(['Atış / sn', cur.rate, d.rate]); }
+    R.push(['Tek hedef DPS', Math.round(dps(cur, lv)), Math.round(dps(d, nl))]);
+  } else if (c.slot === 'mod') R.push(['Etki', up ? modText(c.id, lv) : null, modText(c.id, nl)]);
+  else if (c.slot === 'passive') { const d = PASSIVES[c.id]; for (const k in PASS_LBL) if (d[k]) { const v = l => '+' + (PASS_LBL[k][1] ? '%' + Math.round(d[k] * l * 100) : d[k] * l + ' can'); R.push([PASS_LBL[k][0], up ? v(lv) : null, v(nl)]); } }
+  else {
+    const cb = COMBOS[comboKey(p.el, c.id)], m = l => 'x' + f1(cb.mult * (1 + CFG.combo.echoLvl * (l - 1))); R.push(['Kombo çarpanı', up ? m(lv) : null, m(nl)]);
+    if (cb.aoe) R.push(['Alan', null, cb.aoe + ' br']); if (cb.chain) R.push(['Sıçrama', null, cb.chain + ' hedef']); if (cb.stun) R.push(['Sersemletme', null, cb.stun + ' sn']);
+    if (cb.slow) R.push(['Yavaşlatma', null, '%' + Math.round(cb.slow * 100)]); if (cb.dot) R.push(['Yanık', null, cb.dotDur + ' sn']); if (cb.vuln) R.push(['Zayıflatma', null, cb.vuln + ' sn']);
+  }
+  return R;
+}
 let draftCards = null;
 function openDraft() {
   G.state = 'draft'; if (document.exitPointerLock) document.exitPointerLock();
   for (const p of G.players) if (p.isBot && p.alive) botDraft(p);
   if (AUTO) { closeDraft(); return; }
-  const n = 3 + (G.extraCard ? CFG.flawless.extraCards : 0), b = G.human.build, mine = G.roundLeaks[0];
-  draftCards = genCards(G.human, n);
-  let h = '<h1>Tur ' + G.round + ' tamamlandı</h1><p>' + (mine === 0 ? '<b style="color:#ffd76a">KUSURSUZ TUR!</b> Ekstra kart kazandın.' : 'Çekirdeğine ' + mine + ' yaratık ulaştı.') +
-    (G.human.chain > 0 ? ' Kusursuz zincir x' + G.human.chain + ' (hasar +%' + Math.round(G.human.chain * CFG.flawless.dmgPerChain * 100) + ').' : '') + '</p><p>Build\'ini güçlendir — bir kart seç (tıkla ya da 1–' + n + '):</p><div class="cards">';
+  G.rerolls = 1; draftCards = genCards(G.human, 3 + (G.extraCard ? CFG.flawless.extraCards : 0)); renderDraft();
+}
+function renderDraft() {
+  const hp = G.human, b = hp.build, n = draftCards.length, mine = G.roundLeaks[0], chip = (t, v) => '<span class="chip">' + t + ' <b>' + v + '</b></span>';
+  let h = '<h1>TUR ' + G.round + ' TAMAMLANDI</h1><p>' + (mine === 0 ? '<b style="color:#ffd76a">KUSURSUZ TUR!</b> Ekstra kart kazandın.' : 'Çekirdeğine ' + mine + ' yaratık ulaştı.') +
+    (hp.chain > 0 ? ' Kusursuz zincir x' + hp.chain + ' (hasar +%' + Math.round(hp.chain * CFG.flawless.dmgPerChain * 100) + ').' : '') + '</p><div class="chips">' +
+    chip('SİLAH', CORES[b.core].name + ' Lv' + b.coreLvl) + chip('MOD', b.mod ? MODS[b.mod].name + ' Lv' + b.modLvl : '—') + chip('PASİF', b.passive ? PASSIVES[b.passive].name + ' Lv' + b.passiveLvl : '—') +
+    chip('REZONANS', b.echo ? ELEMENTS[b.echo].icon + ' ' + COMBOS[comboKey(hp.el, b.echo)].name + ' Lv' + b.echoLvl : '—') + '</div><div class="cards">';
   draftCards.forEach((c, i) => {
-    const tx = cardText(G.human, c), cur = b[c.slot], up = cur === c.id;
-    h += '<div class="card" data-i="' + i + '"><div class="t">' + SLOT_T[c.slot][0] + '</div><div class="n">' + tx[0] + '</div><div class="d">' + tx[1] + '</div><div class="a">' +
-      (up ? 'YÜKSELT → Lv ' + (b[c.slot + 'Lvl'] + 1) : cur ? 'DEĞİŞTİR (seviye korunur)' : 'YENİ') + '</div></div>';
+    const tx = cardText(hp, c), cur = b[c.slot], up = cur === c.id, lv = b[c.slot + 'Lvl'], nl = up ? lv + 1 : lv;
+    h += '<div class="card" style="--c:' + SLOT_C[c.slot] + '" data-i="' + i + '"><div class="hd"><span>' + SLOT_T[c.slot][0] + '</span><span class="key">' + (i + 1) + '</span></div>' +
+      '<div class="ic">' + (c.slot === 'echo' ? ELEMENTS[c.id].icon : ICONS[c.id] || '◆') + '</div><div class="n">' + (c.slot === 'echo' ? ELEMENTS[c.id].name : tx[0]) + '</div>' +
+      '<div class="pips">' + '●'.repeat(Math.min(up ? lv : nl, 10)) + (up ? '<i>◆</i>' : '') + '  Lv ' + nl + '</div><div class="d">' + tx[1] + '</div>';
+    for (const r of cardStats(hp, c)) h += '<div class="st"><span>' + r[0] + '</span><b>' + (r[1] != null && String(r[1]) !== String(r[2]) ? r[1] + ' → <i>' + r[2] + '</i>' : '<i>' + r[2] + '</i>') + '</b></div>';
+    h += '<div class="a">' + (up ? '▲ YÜKSELT' : cur ? '⇄ DEĞİŞTİR · ' + (c.slot === 'echo' ? ELEMENTS[cur].name : SLOT_T[c.slot][1][cur].name) + ' yerine' : '✚ YENİ') + '</div></div>';
   });
-  showOverlay(h + '</div>');
+  showOverlay(h + '</div><button class="re" id="reBtn"' + (G.rerolls > 0 ? '' : ' disabled') + '>↻ Kartları yenile (' + G.rerolls + ' hak)</button><p style="font-size:12px;opacity:.7">Tıkla ya da 1–' + n + ' tuşlarıyla seç</p>');
   document.querySelectorAll('.card').forEach(el => el.onclick = () => pickCard(+el.dataset.i));
+  $('reBtn').onclick = () => { if (G.rerolls <= 0) return; G.rerolls--; draftCards = genCards(hp, n); SFX.pick(); renderDraft(); };
 }
 function pickCard(i) { if (G.state !== 'draft' || !draftCards || !draftCards[i]) return; applyCard(G.human, draftCards[i]); draftCards = null; SFX.pick(); closeDraft(); }
 function closeDraft() { hideOverlay(); UI.slots(); lockPointer(); startRound(G.round + 1); }
@@ -1258,7 +1318,7 @@ function init() {
     'Elementin: <b style="color:' + hex(me.color) + '">' + me.icon + ' ' + me.name + '</b> — ' + me.tdesc + '. Tur aralarında kart seçerek kendi build\'ini kur.</p>' +
     '<div class="keys"><div><b>WASD</b> hareket (geçidin önündeki alanda)</div><div><b>Fare</b> bakış · <b>Shift</b> sprint</div>' +
     '<div><b>Kilit</b>: nişangâh hedefe kendi kilitlenir · <b>Sol tık</b> kilitten çık, serbest nişan · <b>Sağ tık / T</b> yeniden kilitlen</div><div><b>Sağ alt</b>: şerit radarı (halka = menzilin)</div>' +
-    '<div><b>F</b> Ult — öldürdükçe ve seri yaptıkça dolar</div><div><b>G</b> oyun hızı x1/x2/x3 · <b>M</b> ses · <b>B</b> ışıma</div>' +
+    '<div><b>F</b> Ult — öldürdükçe ve seri yaptıkça dolar</div><div><b>G</b> oyun hızı · <b>[ ]</b> görüş açısı · <b>M</b> ses · <b>B</b> ışıma</div>' +
     '<div><b>Kritik</b>: sarı sayı, x2 hasar</div><div><b>Rezonans</b> kartı: 2. element → kombo patlamaları</div></div>' +
     '<button class="go" id="goBtn">BAŞLA</button>');
   $('goBtn').onclick = () => { SFX.init(); hideOverlay(); lockPointer(); startRound(1); };
