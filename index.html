@@ -9,9 +9,12 @@
   /* Minimal tek renk arayüz: siyah zemin, gri kademeler, beyaz vurgu. Paneller tur başında açılır, savaşta kapanır (Tab: sabitle, H: gizle). */
   :root{color-scheme:dark;--w:#f4f5f6;--g1:#b9bcc1;--g2:#7d8187;--line:rgba(255,255,255,.14);--ease:cubic-bezier(.2,.8,.2,1)}
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;overflow:hidden;background:#050506;color:var(--w);font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:400;user-select:none;-webkit-user-select:none}
-  #c{position:fixed;inset:0;width:100%;height:100%;display:block}
-  #hud{position:fixed;inset:0;pointer-events:none;font-size:12px;letter-spacing:.02em}
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;color:var(--w);font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:400;user-select:none;-webkit-user-select:none}
+  #stage{position:fixed;top:0;left:50%;height:100%;transform:translateX(-50%);overflow:hidden;background:#050506}
+  #rot{display:none;position:fixed;inset:0;z-index:9;align-items:center;justify-content:center;background:#050506;font-size:12px;letter-spacing:.4em;text-transform:uppercase;color:var(--g1)}
+  @media (orientation:landscape) and (pointer:coarse) and (max-height:520px){#rot{display:flex}}
+  #c{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #hud{position:absolute;inset:0;pointer-events:none;font-size:12px;letter-spacing:.02em}
   #hud>*{transition:opacity .4s,transform .55s var(--ease)}
   body.hud-off #top,body.hud-off #board,body.hud-off #mini,body.hud-off #feed,body.hud-off #bottom,body.hud-off #streak{opacity:0!important}
   .panel{background:rgba(8,8,9,.55);border:1px solid var(--line);backdrop-filter:blur(10px) saturate(0);-webkit-backdrop-filter:blur(10px) saturate(0);padding:12px 16px}
@@ -126,16 +129,15 @@
   .card.up::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--w)}
   .card:hover.up::after{background:#0a0a0b}
   .card .ic{font-weight:200}
-  @media (max-width:900px){#feed{display:none}.keys{grid-template-columns:1fr}}
-  /* dikey ekran */
-  @media (orientation:portrait){
-    #top{width:78vw;top:14px}#board{top:74px;left:10px;min-width:0;width:62vw;padding:10px 12px}
+  #feed{display:none}.keys{grid-template-columns:1fr}
+  /* dikey düzen (oyun her zaman dikey oynanır) */
+    #top{width:78%;top:14px}#board{top:74px;left:10px;min-width:0;width:62%;padding:10px 12px}
     #mini{width:96px;height:96px;right:10px;bottom:84px}
     #streak{right:6%;top:17%}#streak b{font-size:46px}
     #banner{font-size:20px;letter-spacing:.4em;text-indent:.4em;top:24%}
-    #bottom{bottom:18px;width:86vw;flex-wrap:wrap;justify-content:center;row-gap:10px}
+    #bottom{bottom:18px;width:86%;flex-wrap:wrap;justify-content:center;row-gap:10px}
     #bars{min-width:0;width:100%;padding:0;order:2}#info{white-space:normal;text-align:center}
-    body.hud-open .slot{max-width:42vw;padding:0 10px}
+    body.hud-open .slot{max-width:46%;padding:0 10px}
     #ctl{left:50%;top:auto;bottom:66px;transform:translateX(-50%);flex-direction:row}
     .box{width:94%;padding:14px 0}.box h1{font-size:17px;letter-spacing:.32em;text-indent:.32em;margin-bottom:10px}.box p{font-size:12px}
     .chips{row-gap:8px}.chip{padding:0 10px}
@@ -143,11 +145,11 @@
     .card{width:auto;padding:12px 12px 14px}.card .ic{font-size:24px;margin:14px 0 8px}.card .n{font-size:14px}
     .card .d{font-size:11px;min-height:0;padding-bottom:8px}.card .st{font-size:10px;padding:5px 0}.card .pips{margin:5px 0 8px}
     button.go{padding:13px 40px}
-  }
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
+<div id="stage">
 <canvas id="c"></canvas>
 <div id="hud">
   <div id="fxv"></div>
@@ -177,6 +179,8 @@
   <div id="popups"></div>
   <div id="overlay"><div class="box" id="ovBox"></div></div>
 </div>
+</div>
+<div id="rot">Telefonu dik tut</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
@@ -836,7 +840,7 @@ const FEEL = {
   flash() { const e = $('flash'); e.className = ''; void e.offsetWidth; e.className = 'on'; },
   marker(cls, c) {                                         // vuruş imi: ekran ortasında değil, vurulan yaratığın üzerinde
     const e = $('hm'); _v.set(c.x, c.by, c.z).project(camera); if (_v.z > 1 || _v.z < -1) return;
-    e.style.left = ((_v.x * 0.5 + 0.5) * innerWidth | 0) + 'px'; e.style.top = ((-_v.y * 0.5 + 0.5) * innerHeight | 0) + 'px'; e.className = ''; void e.offsetWidth; e.className = 'on ' + (cls || '');
+    e.style.left = ((_v.x * 0.5 + 0.5) * VW | 0) + 'px'; e.style.top = ((-_v.y * 0.5 + 0.5) * VH | 0) + 'px'; e.className = ''; void e.offsetWidth; e.className = 'on ' + (cls || '');
   },
   hit(c, crit) {
     SFX.hit(); this.marker(crit ? 'crit' : '', c); hitPix(c, 2);
@@ -1140,7 +1144,7 @@ const Cam = { yaw: 0, pitch: 0.13, dist: 5.6, shoulder: 2.0, height: 3.5, sens: 
 const _v = new THREE.Vector3(), _dir = new THREE.Vector3();
 /* Sabit kamera: geçidin üst köşesinden, koridoru çaprazlama gören geniş açı. Oyuncu kamerayı yönetmez. */
 function updateCamera(dt) {
-  const p = G.human, d = p.dir, tall = innerHeight > innerWidth, C = tall ? CFG.camP : CFG.cam; Input.look.dx = Input.look.dy = 0;
+  const p = G.human, d = p.dir, tall = true, C = CFG.camP; Input.look.dx = Input.look.dy = 0;
   const SS = CFG.feel.streakShake, sk = FEEL.streak >= SS.from ? Math.min(FEEL.streak, SS.cap) / SS.cap : 0, tr = Math.max(FEEL.trauma, sk * SS.floor);
   const sh = tr * tr * CFG.feel.shakeMax * (1 + sk * SS.bonus), al = CFG.arena.postAl - C.back, la = C.la, la2 = C.lookLa, al2 = CFG.arena.postAl + C.ahead, j = () => (Math.random() - 0.5) * 2 * sh;
   const sw = Math.sin(performance.now() * 0.00035), al3 = al + sw * 0.5, la3 = la + Math.cos(performance.now() * 0.00027) * 0.35;          // hafif nefes alan kamera
@@ -1179,15 +1183,15 @@ function updateHuman(p, dt) {
 const lerp = (a, b, k) => a + (b - a) * k;
 /* Şov nişancısı duruşları. kn: diz çökme · wd: bacak açıklığı · yaw: gövde dönüşü · lean: geriye yay ·
    R/L: [kolu öne kaldırma (−1.5 = yatay ileri), yana açma] · look: baş dönüşü */
-const POSES = [
-  { name: 'HAZIR',     kn: 0, wd: 0,   yaw: 0,     lean: 0,     R: [-1.5, 0],     L: [-1.5, 0],     look: 0 },      // tabancalar paralel
-  { name: 'DİZ ÇÖK',   kn: 1, wd: 0,   yaw: 0,     lean: 0.05,  R: [-1.5, 0],     L: [-1.5, 0],     look: 0 },
-  { name: 'AKİMBO',    kn: 0, wd: 1,   yaw: 0,     lean: 0.08,  R: [-1.45, 0.55], L: [-1.45, -0.55], look: 0 },
-  { name: 'YAN DURUŞ', kn: 0, wd: 0.4, yaw: -1.57, lean: 0,     R: [0, 1.52],     L: [-3.0, -0.1],  look: 1.3 },
-  { name: 'ŞOV',       kn: 1, wd: 0,   yaw: 0,     lean: 0,     R: [-1.5, 0],     L: [-2.95, -0.2], look: 0 },
-  { name: 'SIRTTAN',   kn: 0, wd: 0.5, yaw: 3.14,  lean: 0.1,   R: [1.5, 0],      L: [1.5, 0],      look: 0 },
-  { name: 'ÇAPRAZ',    kn: 0, wd: 1,   yaw: 0,     lean: 0,     R: [-1.5, -0.8],  L: [-1.5, 0.8],   look: 0 },
-  { name: 'GERİ YAY',  kn: 0, wd: 0.6, yaw: 0,     lean: -0.45, R: [-1.25, 0],    L: [-1.25, 0],    look: 0 },
+const POSES = [                                                                                     // tüm duruşlarda iki tabanca paralel
+  { name: 'HAZIR',     kn: 0,    wd: 0,   yaw: 0,     lean: 0,     R: [-1.5, 0],   L: [-1.5, 0],   look: 0 },
+  { name: 'DİZ ÇÖK',   kn: 1,    wd: 0,   yaw: 0,     lean: 0.05,  R: [-1.5, 0],   L: [-1.5, 0],   look: 0 },
+  { name: 'GENİŞ',     kn: 0,    wd: 1,   yaw: 0,     lean: 0.1,   R: [-1.45, 0],  L: [-1.45, 0],  look: 0 },
+  { name: 'YAN DURUŞ', kn: 0,    wd: 0.4, yaw: -1.57, lean: 0,     R: [0, 1.52],   L: [0, 1.52],   look: 1.3 },
+  { name: 'ŞOV',       kn: 1,    wd: 0,   yaw: 0,     lean: -0.28, R: [-1.3, 0],   L: [-1.3, 0],   look: 0 },
+  { name: 'SIRTTAN',   kn: 0,    wd: 0.5, yaw: 3.14,  lean: 0.1,   R: [1.5, 0],    L: [1.5, 0],    look: 0 },
+  { name: 'ÇÖMEL',     kn: 0.5,  wd: 0.7, yaw: 0,     lean: 0.16,  R: [-1.55, 0],  L: [-1.55, 0],  look: 0 },
+  { name: 'GERİ YAY',  kn: 0,    wd: 0.6, yaw: 0,     lean: -0.45, R: [-1.25, 0],  L: [-1.25, 0],  look: 0 },
 ];
 const poseIndex = st => st >= CFG.stance.every ? Math.floor(st / CFG.stance.every) % POSES.length : 0;
 function updateHeroCommon(p, dt) {
@@ -1298,7 +1302,7 @@ const UI = {
     if (this.bannerT > 0 && (this.bannerT -= dt) <= 0) $('banner').style.opacity = 0;
     if (this.comboT > 0 && (this.comboT -= dt) <= 0) $('comboBanner').style.opacity = 0;
     if (this.vigT > 0 && (this.vigT -= dt) <= 0) $('vig').style.opacity = G.human.core / CFG.core.hp < 0.3 ? 0.35 : 0;
-    const W = innerWidth, H = innerHeight, cr = $('cross'), hm = $('hm'), tg = G.lock && p.tgt && p.tgt.active ? p.tgt : null;
+    const W = VW, H = VH, cr = $('cross'), hm = $('hm'), tg = G.lock && p.tgt && p.tgt.active ? p.tgt : null;
     let cxp = '50%', cyp = '50%';
     if (tg) { _v.set(tg.x, tg.by, tg.z).project(camera); if (_v.z < 1 && _v.z > -1) { cxp = ((_v.x * 0.5 + 0.5) * W | 0) + 'px'; cyp = ((-_v.y * 0.5 + 0.5) * H | 0) + 'px'; } }
     cr.style.left = cxp; cr.style.top = cyp; cr.className = tg ? 'locked' : ''; cr.style.display = tg ? 'block' : 'none';
@@ -1464,9 +1468,11 @@ function loop(now) {
   if (G.human) { updateCamera(dt); UI.frame(dt); }
   if (composer && G.bloom) composer.render(); else renderer.render(scene, camera);
 }
-function resize() {
-  renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-  if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(innerWidth, innerHeight); }
+let VW = 360, VH = 640;
+function resize() {                     // sahne her zaman dikey: genişlik en çok yüksekliğin 9/16'sı
+  VH = innerHeight; VW = Math.min(innerWidth, Math.round(VH * 0.5625)); $('stage').style.width = VW + 'px';
+  renderer.setSize(VW, VH, false); camera.aspect = VW / VH; camera.updateProjectionMatrix();
+  if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(VW, VH); }
 }
 addEventListener('resize', resize);
 
@@ -1480,10 +1486,10 @@ function init() {
   showOverlay('<h1>ALTIGEN REZONANS</h1><p>İstasyonun gövdesi yarıldı; koridorun ucunda bir kara delik açık. Sen bu beton koridorun bekçisisin ve bu ucundaki <b>geçidi koruyorsun</b>: mühür kristaline ulaşan her yaratık canını azaltır, mührü düşen elenir. 20 tur dayan.<br>' +
     'Elementin: <b style="color:' + hex(me.color) + '">' + me.icon + ' ' + me.name + '</b> — ' + me.tdesc + '. Kamera sabit; savaşı izle, build\'i sen yönet.</p>' +
     '<div class="keys"><div><b>Otomatik</b>: karakter ortada durur, hedefini seçer, ateş eder ve ultisini kendi kullanır</div><div><b>Sen</b>: tur aralarında kart seçerek build\'i kurarsın (tıkla ya da 1–4)</div>' +
-    '<div><b>Hız · Ses · Panel</b>: ekrandaki düğmeler (ya da G · M · Tab)</div><div><b>Dikey ekran</b>: telefonu dik tut, kadraj kendini ayarlar</div>' +
+    '<div><b>Hız · Ses · Panel</b>: ekrandaki düğmeler (ya da G · M · Tab)</div><div><b>Dikey oyun</b>: her ekranda dik oynanır; telefonu dik tut</div>' +
     '<div><b>[ ]</b> görüş açısı · <b>H</b> arayüzü gizle</div><div><b>Yaratıklar</b>: sahnedeki tek renk onlar</div></div>' +
     '<button class="go" id="goBtn">BAŞLA</button>');
-  $('goBtn').onclick = () => { SFX.init(); hideOverlay(); startRound(1); };
+  $('goBtn').onclick = () => { SFX.init(); try { const o = screen.orientation; if (o && o.lock) o.lock('portrait').catch(() => {}); } catch (e) {} hideOverlay(); startRound(1); };
   if (AUTO) { hideOverlay(); startRound(1); }
   requestAnimationFrame(loop);
 }
