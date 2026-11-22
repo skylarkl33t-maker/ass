@@ -524,16 +524,19 @@ function makePlayer(id, el) {
     const f = limb(0.26, K, 0, -0.8, 0); f.rotation.x = -Math.PI / 2;
   }
   limb(1.2, body, 0, 2.8, 0);                                // omurga
+  const tg = new THREE.CylinderGeometry(0.31, 0.15, 0.8, 12).translate(0, 2.42, 0), th = new THREE.CylinderGeometry(0.31 + O, 0.15 + O, 0.8 + O * 2, 12).translate(0, 2.42, 0);   // V göğüs
+  const tor = new THREE.Mesh(tg, INK); tor.scale.z = 0.62; tor.castShadow = true; body.add(tor); const toh = new THREE.Mesh(th, HULL); toh.scale.z = 0.66; body.add(toh);
+  const sb = limb(0.6, body, -0.3, 2.74, 0); sb.rotation.z = Math.PI / 2;                                // omuz çizgisi
   p.head = new THREE.Group(); p.head.position.set(0, 3.22, 0); body.add(p.head);
   const hd = new THREE.Mesh(new THREE.SphereGeometry(0.36, 20, 14), INK); hd.castShadow = true; p.head.add(hd); p.head.add(new THREE.Mesh(new THREE.SphereGeometry(0.36 + O, 20, 14), HULL));
   const eye = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.05, 0.04), new THREE.MeshBasicMaterial({ color: 0xffffff })); eye.position.set(0, 0.04, 0.345); p.head.add(eye);
   const pistol = par => {                                 // tabanca: ön kolun ucunda, namlu kol doğrultusunda
     const q = new THREE.Group(); q.position.y = -0.6; par.add(q);
-    for (const ge of [new THREE.BoxGeometry(0.13, 0.52, 0.17).translate(0, -0.22, 0), new THREE.BoxGeometry(0.11, 0.15, 0.28).translate(0, 0.0, -0.15)]) { q.add(new THREE.Mesh(ge, INK)); const h = new THREE.Mesh(ge, HULL); h.scale.set(1.55, 1.1, 1.4); q.add(h); }
+    for (const ge of [new THREE.BoxGeometry(0.13, 0.52, 0.17).translate(0, -0.22, 0), new THREE.BoxGeometry(0.11, 0.15, 0.28).translate(0, 0.0, -0.15)]) { q.add(new THREE.Mesh(ge, INK)); const h = new THREE.Mesh(ge, HULL); h.scale.set(1.34, 1.07, 1.24); q.add(h); }
     const tp = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.07, 0.2), lit); tp.position.y = -0.5; q.add(tp); return q;
   };
-  p.armR = limb(0.62, body, 0.07, 2.66, 0); p.foreR = limb(0.6, p.armR, 0, -0.62, 0); p.pistR = pistol(p.foreR);
-  p.armL = limb(0.62, body, -0.07, 2.66, 0); p.foreL = limb(0.6, p.armL, 0, -0.62, 0); p.pistL = pistol(p.foreL);
+  p.armR = limb(0.62, body, 0.31, 2.74, 0); p.foreR = limb(0.6, p.armR, 0, -0.62, 0); p.pistR = pistol(p.foreR);
+  p.armL = limb(0.62, body, -0.31, 2.74, 0); p.foreL = limb(0.6, p.armL, 0, -0.62, 0); p.pistL = pistol(p.foreL);
   p.rec = [0, 0]; p.hand = 0;
   p.orb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8), lit); p.orb.position.set(0, 2.35, 0.1); body.add(p.orb);               // göğüsteki renk noktası: ult doldukça büyür
   if (id !== 0) { p.label = makeLabel(p.name, hex(col)); p.label.position.y = 4.2; p.label.scale.set(4.5, 1.1, 1); g.add(p.label); }
@@ -582,43 +585,58 @@ const creepPool = new Pool(CFG.pools.creeps, () => {
 /* Yaratıklar renkli piksellerden (küplerden) oluşur: tek bir InstancedMesh, her kare yeniden yazılır.
    Sahnedeki tek renk onlardır. Doğarken pikseller toplanır, ölünce her piksel kendi rengiyle saçılır. */
 const PAL = [0xff2d55, 0xff9500, 0xffd60a, 0x30d158, 0x00c7be, 0x40c8ff, 0x5e5ce6, 0xbf5af2, 0xff375f].map(h => new THREE.Color(h));
+/* Desenler: # gövde · + ikinci renk · o göz akı · x göz bebeği · . boş. İkinci dizi yürüyüşün öbür karesi (alt satırlar). */
 const PAT_SRC = {
-  grunt:  ['.#...#.', '..###..', '.#####.', '##.#.##', '#######', '.#.#.#.'],
-  runner: ['..#..', '.###.', '#.#.#', '#####', '.#.#.', '#...#'],
-  tank:   ['.######.', '########', '##.##.##', '########', '########', '.##..##.', '##....##'],
-  boss:   ['#..####..#', '##.####.##', '.########.', '##.####.##', '##########', '#.######.#', '##########', '.##.##.##.', '##..##..##'],
+  grunt:  { d: 2, rows: ['..#...#..', '...#.#...', '..#####..', '.##o#o##.', '####x####'.replace('x', '#'), '#+#####+#', '#.#####.#', '#.#...#.#', '..##.##..'], alt: ['.##...##.', '##.....##'] },
+  runner: { d: 2, rows: ['...#...', '..###..', '.#o#o#.', '.#####.', '+.###.+', '..###..', '.##.##.', '.#...#.', '#.....#'], alt: ['..#.#..', '..#.#..'] },
+  tank:   { d: 3, rows: ['..#######..', '.#########.', '##+#####+##', '##oo###oo##', '##ox###xo##', '###########', '#####+#####', '.#########.', '.###...###.', '###.....###'], alt: ['..###.###..', '..###.###..'] },
+  boss:   { d: 3, rows: ['#...#####...#', '##.#######.##', '.###########.', '.##ooo#ooo##.', '.##oxo#oxo##.', '.##ooo#ooo##.', '#############', '###+#####+###', '##+++###+++##', '.###########.', '..#########..', '.###.###.###.', '###..###..###'], alt: ['..###.#.###..', '.###..#..###.'] },
 };
 const PAT = {}; let PATMAX = 0;
-for (const k in PAT_SRC) { const rows = PAT_SRC[k], cells = []; rows.forEach((r, gy) => { for (let gx = 0; gx < r.length; gx++) if (r[gx] === '#') for (let gz = 0; gz < 2; gz++) cells.push([gx, gy, gz]); }); PAT[k] = { cells, w: rows[0].length, h: rows.length }; PATMAX = Math.max(PATMAX, cells.length); }
-const VOXMAX = 9000, PIXMAX = 4500, PIX = [];
+for (const k in PAT_SRC) {
+  const S = PAT_SRC[k], rows = S.rows, h = rows.length, w = rows[0].length, cells = [];
+  rows.forEach((r, gy) => { for (let gx = 0; gx < w; gx++) { const ch = r[gx], a = gy >= h - 2 ? S.alt[gy - (h - 2)][gx] : ch; if (ch === '.' && a === '.') continue;
+    for (let gz = 0; gz < S.d; gz++) { const front = gz === S.d - 1, kind = front ? ch : (ch === '.' ? '.' : ch === 'o' || ch === 'x' ? '#' : ch); cells.push([gx, gy, gz, kind, ch !== '.', a !== '.', front]); } } });
+  PAT[k] = { cells, w, h, d: S.d }; PATMAX = Math.max(PATMAX, cells.length);
+}
+const VOXMAX = 20000, PIXMAX = 5000, PIX = [];
 const voxMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), VOXMAX), pixMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), PIXMAX);
 for (const m of [voxMesh, pixMesh]) { m.frustumCulled = false; m.setColorAt(0, PAL[0]); m.count = 0; scene.add(m); } voxMesh.castShadow = true;
 function voxInit(c) {
-  const P = PAT[c.type], vs = c.vsz = c.radius * 2 / P.w, base = Math.random() * PAL.length | 0, boss = c.type === 'boss';
+  const P = PAT[c.type], vs = c.vsz = c.radius * 2 / P.w, bi = Math.random() * PAL.length | 0, base = PAL[bi], acc = PAL[(bi + 3 + (Math.random() * 3 | 0)) % PAL.length], boss = c.type === 'boss';
   if (!c.vc) { c.vc = new Float32Array(PATMAX * 3); c.vs = new Float32Array(PATMAX * 3); }
   for (let i = 0; i < P.cells.length; i++) {
-    const col = PAL[(boss ? P.cells[i][1] + P.cells[i][0] : base + (Math.random() < 0.68 ? 0 : 1 + (Math.random() * 2 | 0))) % PAL.length], k = rand(0.82, 1.08);
-    c.vc[i * 3] = Math.min(1, col.r * k); c.vc[i * 3 + 1] = Math.min(1, col.g * k); c.vc[i * 3 + 2] = Math.min(1, col.b * k);
+    const q = P.cells[i], kd = q[3]; let r, g, b;
+    if (kd === 'o') r = g = b = 1; else if (kd === 'x') r = g = b = 0.04;
+    else {
+      const col = kd === '+' ? acc : boss ? PAL[(bi + (q[1] >> 1)) % PAL.length] : base;
+      const k = (q[6] ? 1 : 0.55 + 0.12 * q[2]) * (1.14 - 0.3 * q[1] / P.h) * rand(0.93, 1.05);        // arka katman koyu, üst satırlar aydınlık
+      r = Math.min(1, col.r * k); g = Math.min(1, col.g * k); b = Math.min(1, col.b * k);
+    }
+    c.vc[i * 3] = r; c.vc[i * 3 + 1] = g; c.vc[i * 3 + 2] = b;
     c.vs[i * 3] = rand(-6, 6); c.vs[i * 3 + 1] = rand(-1, 7); c.vs[i * 3 + 2] = rand(-10, -2);
   }
-  c.by = P.h * vs / 2; c.h = P.h * vs + 1; c.bar.position.y = c.h; c.model.visible = false;
+  c.by = P.h * vs / 2; c.h = P.h * vs + 1; c.bar.position.y = c.h; c.model.visible = false; c.blink = rand(1, 4);
 }
 function voxPos(c, i, out, ek) {          // i. pikselin dünya konumu
   const P = PAT[c.type], q = P.cells[i], vs = c.vsz, inv = 1 - ek, pu = 1 + c.punch * 0.22;
-  let lx = (q[0] - (P.w - 1) / 2) * vs * pu + c.vs[i * 3] * inv; if (q[1] >= P.h - 2) lx += (q[0] < P.w / 2 ? 1 : -1) * Math.sin(c.ph) * vs * 0.3;
-  const lz = (q[2] - 0.5) * vs + c.vs[i * 3 + 2] * inv;
-  out[0] = c.x + c.uz * lx + c.ux * lz; out[1] = (P.h - 1 - q[1] + 0.5) * vs * (1 - c.punch * 0.18) + (c.stunT > 0 ? 0 : Math.abs(Math.sin(c.ph)) * 0.25) + c.vs[i * 3 + 1] * inv; out[2] = c.z - c.ux * lx + c.uz * lz;
+  const lx = (q[0] - (P.w - 1) / 2) * vs * pu + c.vs[i * 3] * inv + Math.sin(c.ph * 0.5 + q[1] * 0.5) * vs * 0.12, lz = (q[2] - (P.d - 1) / 2) * vs + c.vs[i * 3 + 2] * inv;
+  out[0] = c.x + c.uz * lx + c.ux * lz; out[1] = (P.h - 1 - q[1] + 0.5) * vs * (1 - c.punch * 0.18) + (c.stunT > 0 ? 0 : Math.abs(Math.sin(c.ph)) * vs * 0.6) + c.vs[i * 3 + 1] * inv; out[2] = c.z - c.ux * lx + c.uz * lz;
 }
 const _vp = [0, 0, 0];
 function renderVoxels() {
   const M = voxMesh.instanceMatrix.array, C = voxMesh.instanceColor.array; let n = 0;
   for (const c of G.creeps) {
     if (!c.active || c.lane !== 0) continue;
-    const cells = PAT[c.type].cells, ek = 1 - (1 - c.born) * (1 - c.born), s = c.vsz * 0.94 * (0.3 + 0.7 * ek), cs = c.uz, sn = c.ux, fl = c.flash > 0;
-    for (let i = 0; i < cells.length && n < VOXMAX; i++, n++) {
+    const cells = PAT[c.type].cells, ek = 1 - (1 - c.born) * (1 - c.born), s = c.vsz * 0.93 * (0.3 + 0.7 * ek), cs = c.uz, sn = c.ux, fl = c.flash > 0;
+    const frame = c.stunT > 0 ? 4 : Math.sin(c.ph) > 0 ? 4 : 5, shut = (G.time + c.blink) % 3.2 < 0.12;                 // iki kareli yürüyüş + göz kırpma
+    if (Math.random() < 0.12) { const i = Math.random() * cells.length | 0; if (cells[i][3] === '#') { const pc = PAL[Math.random() * PAL.length | 0]; c.vc[i * 3] = pc.r; c.vc[i * 3 + 1] = pc.g; c.vc[i * 3 + 2] = pc.b; } }   // piksel parıltısı
+    for (let i = 0; i < cells.length && n < VOXMAX; i++) {
+      const q = cells[i]; if (!q[frame]) continue;
       voxPos(c, i, _vp, ek); const o = n * 16, j = n * 3;
       M[o] = s * cs; M[o + 1] = 0; M[o + 2] = -s * sn; M[o + 3] = 0; M[o + 4] = 0; M[o + 5] = s; M[o + 6] = 0; M[o + 7] = 0; M[o + 8] = s * sn; M[o + 9] = 0; M[o + 10] = s * cs; M[o + 11] = 0; M[o + 12] = _vp[0]; M[o + 13] = _vp[1]; M[o + 14] = _vp[2]; M[o + 15] = 1;
-      if (fl) C[j] = C[j + 1] = C[j + 2] = 1; else { C[j] = c.vc[i * 3]; C[j + 1] = c.vc[i * 3 + 1]; C[j + 2] = c.vc[i * 3 + 2]; }
+      if (fl) C[j] = C[j + 1] = C[j + 2] = 1; else if (shut && (q[3] === 'o' || q[3] === 'x')) C[j] = C[j + 1] = C[j + 2] = 0.05; else { C[j] = c.vc[i * 3]; C[j + 1] = c.vc[i * 3 + 1]; C[j + 2] = c.vc[i * 3 + 2]; }
+      n++;
     }
   }
   voxMesh.count = n; voxMesh.instanceMatrix.needsUpdate = true; voxMesh.instanceColor.needsUpdate = true;
@@ -627,6 +645,7 @@ function pushPix(x, y, z, vx, vy, vz, size, r, g, b, life) { if (PIX.length < PI
 function burstCreep(c) {                   // ölüm: her piksel kendi rengiyle saçılır
   if (FXOFF) return; const cells = PAT[c.type].cells, pw = c.type === 'boss' ? 1.7 : 1;
   for (let i = 0; i < cells.length; i++) {
+    if (!cells[i][4] || PIX.length > PIXMAX - 40) continue;
     voxPos(c, i, _vp, 1); const dx = _vp[0] - c.x, dy = _vp[1] - c.by, dz = _vp[2] - c.z;
     pushPix(_vp[0], _vp[1], _vp[2], (dx * rand(2, 6) - c.ux * rand(2, 7) + rand(-2, 2)) * pw, (rand(4, 11) + dy * 2) * pw, (dz * rand(2, 6) - c.uz * rand(2, 7) + rand(-2, 2)) * pw, c.vsz, c.vc[i * 3], c.vc[i * 3 + 1], c.vc[i * 3 + 2], rand(0.9, 1.9));
   }
@@ -906,7 +925,7 @@ function fireHero(p, tgt) {
   const dmg = core.dmg * p.stats.dmg * dmgMult(p) * (m.extra ? (n0 + m.extra * m.extraEff) / n : 1);
   let dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1;
   p.faceYaw = Math.atan2(dx, dz); p.faceT = 0.5; p.recoil = 1;
-  p.hand ^= 1; p.rec[p.hand] = 1; const sd = p.hand ? 0.38 : -0.38;                    // eller sırayla ateş eder
+  p.hand ^= 1; p.rec[p.hand] = 1; const sd = p.hand ? 0.36 : -0.36;                    // eller sırayla ateş eder
   const mx = p.x + Math.sin(p.faceYaw) * 1.9 + Math.cos(p.faceYaw) * sd, mz = p.z + Math.cos(p.faceYaw) * 1.9 - Math.sin(p.faceYaw) * sd;
   spawnFx(mx, 2.6, mz, core.kind === 'beam' ? 0.5 : 1.0, col, 0.07);          // namlu parlaması
   if (me) { SFX.shoot(core.kind, el); FEEL.shake(CFG.feel.trauma.shot * (core.kind === 'beam' ? 0.3 : core.aoe || core.pellets ? 2 : 1)); FEEL.kick += core.kind === 'beam' ? 0.05 : core.aoe || core.pellets ? 0.45 : 0.22; }
@@ -1127,14 +1146,14 @@ const lerp = (a, b, k) => a + (b - a) * k;
 /* Şov nişancısı duruşları. kn: diz çökme · wd: bacak açıklığı · yaw: gövde dönüşü · lean: geriye yay ·
    R/L: [kolu öne kaldırma (−1.5 = yatay ileri), yana açma] · look: baş dönüşü */
 const POSES = [
-  { name: 'HAZIR',     kn: 0, wd: 0,   yaw: 0,     lean: 0,     R: [-1.5, -0.1],  L: [-1.5, 0.1],   look: 0 },
-  { name: 'DİZ ÇÖK',   kn: 1, wd: 0,   yaw: 0,     lean: 0.05,  R: [-1.5, -0.1],  L: [-1.5, 0.1],   look: 0 },
-  { name: 'AKİMBO',    kn: 0, wd: 1,   yaw: 0,     lean: 0.08,  R: [-1.45, 0.5],  L: [-1.45, -0.5], look: 0 },
+  { name: 'HAZIR',     kn: 0, wd: 0,   yaw: 0,     lean: 0,     R: [-1.5, 0],     L: [-1.5, 0],     look: 0 },      // tabancalar paralel
+  { name: 'DİZ ÇÖK',   kn: 1, wd: 0,   yaw: 0,     lean: 0.05,  R: [-1.5, 0],     L: [-1.5, 0],     look: 0 },
+  { name: 'AKİMBO',    kn: 0, wd: 1,   yaw: 0,     lean: 0.08,  R: [-1.45, 0.55], L: [-1.45, -0.55], look: 0 },
   { name: 'YAN DURUŞ', kn: 0, wd: 0.4, yaw: -1.57, lean: 0,     R: [0, 1.52],     L: [-3.0, -0.1],  look: 1.3 },
-  { name: 'ŞOV',       kn: 1, wd: 0,   yaw: 0,     lean: 0,     R: [-1.5, -0.1],  L: [-2.95, -0.2], look: 0 },
-  { name: 'SIRTTAN',   kn: 0, wd: 0.5, yaw: 3.14,  lean: 0.1,   R: [1.5, 0.14],   L: [1.5, -0.14],  look: 0 },
-  { name: 'ÇAPRAZ',    kn: 0, wd: 1,   yaw: 0,     lean: 0,     R: [-1.5, -0.6],  L: [-1.5, 0.6],   look: 0 },
-  { name: 'GERİ YAY',  kn: 0, wd: 0.6, yaw: 0,     lean: -0.45, R: [-1.25, 0.22], L: [-1.25, -0.22], look: 0 },
+  { name: 'ŞOV',       kn: 1, wd: 0,   yaw: 0,     lean: 0,     R: [-1.5, 0],     L: [-2.95, -0.2], look: 0 },
+  { name: 'SIRTTAN',   kn: 0, wd: 0.5, yaw: 3.14,  lean: 0.1,   R: [1.5, 0],      L: [1.5, 0],      look: 0 },
+  { name: 'ÇAPRAZ',    kn: 0, wd: 1,   yaw: 0,     lean: 0,     R: [-1.5, -0.8],  L: [-1.5, 0.8],   look: 0 },
+  { name: 'GERİ YAY',  kn: 0, wd: 0.6, yaw: 0,     lean: -0.45, R: [-1.25, 0],    L: [-1.25, 0],    look: 0 },
 ];
 const poseIndex = st => st >= CFG.stance.every ? Math.floor(st / CFG.stance.every) % POSES.length : 0;
 function updateHeroCommon(p, dt) {
@@ -1142,7 +1161,7 @@ function updateHeroCommon(p, dt) {
   p.rec[0] = Math.max(0, p.rec[0] - dt * 9); p.rec[1] = Math.max(0, p.rec[1] - dt * 9);
   const e = Math.min(1, dt * 9), t = G.time, pi = p === G.human ? poseIndex(FEEL.streak) : 0;
   if (pi !== p.pi) { if (p.pi != null) p.flour = 1; p.pi = pi; }                                       // duruş değişimi: zıpla, dön, tabancaları çevir
-  const P = POSES[pi], c = p.cur || (p.cur = { kn: 0, wd: 0, yaw: 0, lean: 0, rx: -1.5, rz: -0.1, lx: -1.5, lz: 0.1, look: 0 });
+  const P = POSES[pi], c = p.cur || (p.cur = { kn: 0, wd: 0, yaw: 0, lean: 0, rx: -1.5, rz: 0, lx: -1.5, lz: 0, look: 0 });
   c.kn = lerp(c.kn, P.kn, e); c.wd = lerp(c.wd, P.wd, e); c.yaw = lerp(c.yaw, P.yaw, e); c.lean = lerp(c.lean, P.lean, e); c.look = lerp(c.look, P.look, e);
   c.rx = lerp(c.rx, P.R[0], e); c.rz = lerp(c.rz, P.R[1], e); c.lx = lerp(c.lx, P.L[0], e); c.lz = lerp(c.lz, P.L[1], e);
   p.flour = Math.max(0, (p.flour || 0) - dt * 2); p.pump = Math.max(0, (p.pump || 0) - dt * 5);
