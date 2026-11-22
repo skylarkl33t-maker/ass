@@ -208,6 +208,7 @@ const CFG = {
   player:  { walk: 8, sprint: 13, stamina: 100, staminaDrain: 22, staminaRegen: 16 },
   crit:    { chance: 0.12, mult: 2.0 },
   target:  { danger: 12 },
+  beam:    { w0: 0.08, perLvl: 0.034, max: 0.5 },             // sürekli ışının kalınlığı: silah seviyesiyle büyür
   camP:    { back: 9, la: 2.4, y: 5.4, ahead: 30, lookLa: 0.9, lookY: 2.3, fov: -22 },   // yakın kadraj: karakter sağ alt köşede, koridor ve kara delik ortada   // dikey ekran: arkadan-yukarıdan, koridor boyunca
   cam:     { back: 6.5, la: 5.6, y: 6.2, ahead: 13, lookLa: -3, lookY: 1.2 },   // sabit köşe kamerası: karakterin arka-üst köşesinden (koridor-yerel)                                  // bu mesafeden yakına giren yaratık her zaman ilk hedef
   combo:   { window: 2.0, icd: 0.9, splash: 0.7, echoLvl: 0.25 },
@@ -257,19 +258,19 @@ const comboKey = (a, b) => EL_KEYS.indexOf(a) < EL_KEYS.indexOf(b) ? a + '+' + b
 
 /* Silah çekirdekleri. kind: proj | beam | chain · kb: vuruş başı geri itme · kbMul: element itmesinin çarpanı */
 const CORES = {
-  single:  { name: 'Tek Hedef', kind: 'proj',  dmg: 14,  rate: 2.6, range: 29, speed: 78, kb: 0.4,  kbMul: 1,    desc: 'Hızlı, isabetli tek mermi.' },
-  arc:     { name: 'Yay AoE',   kind: 'proj',  dmg: 17,  rate: 1.1, range: 27, speed: 44, kb: 1.3,  kbMul: 1.3,  aoe: 5.5, desc: 'Çarptığı yerde patlar (%60 alan hasarı).' },
-  beam:    { name: 'Işın',      kind: 'beam',  dmg: 4.2, rate: 9,   range: 25, kb: 0.05, kbMul: 0.12, desc: 'Kesintisiz ışın, çok sık vuruş.' },
-  chain:   { name: 'Zincir',    kind: 'chain', dmg: 13,  rate: 1.5, range: 25, kb: 0.3,  kbMul: 0.8,  jumps: 3, falloff: 0.75, jumpR: 10, desc: '3 hedefe sıçrayan şimşek.' },
-  scatter: { name: 'Saçma',     kind: 'proj',  dmg: 6,   rate: 1.5, range: 17, speed: 64, kb: 0.55, kbMul: 0.3,  pellets: 6, spread: 0.5, desc: 'Yakın mesafe 6 saçma, sert iter.' },
+  single:  { name: 'Odak Işını', kind: 'proj',  dmg: 14,  rate: 2.6, range: 29, speed: 78, kb: 0.4,  kbMul: 1,    desc: 'Tek hedefe güçlü, isabetli ışın darbeleri.' },
+  arc:     { name: 'Patlayan Işın',   kind: 'proj',  dmg: 17,  rate: 1.1, range: 27, speed: 44, kb: 1.3,  kbMul: 1.3,  aoe: 5.5, desc: 'Işın vurduğu yerde patlar (%60 alan hasarı).' },
+  beam:    { name: 'Sürekli Işın',      kind: 'beam',  dmg: 4.2, rate: 9,   range: 25, kb: 0.05, kbMul: 0.12, desc: 'Çok sık vuran kesintisiz ışın.' },
+  chain:   { name: 'Zincir Işın',    kind: 'chain', dmg: 13,  rate: 1.5, range: 25, kb: 0.3,  kbMul: 0.8,  jumps: 3, falloff: 0.75, jumpR: 10, desc: 'Hedeften hedefe sıçrayan ışın (3 sıçrama).' },
+  scatter: { name: 'Yelpaze Işın',     kind: 'proj',  dmg: 6,   rate: 1.5, range: 17, speed: 64, kb: 0.55, kbMul: 0.3,  pellets: 6, spread: 0.5, desc: 'Yakın mesafede 6 ışına bölünür, sert iter.' },
 };
 const MODS = {
-  pierce:   { name: 'Delici',       pierce: 2, desc: 'Mermi 2 hedefi deler (ışın: hat boyunca, zincir: +sıçrama).' },
+  pierce:   { name: 'Delici',       pierce: 2, desc: 'Işın hat üzerindeki 2 hedefi daha deler (zincir: +sıçrama).' },
   ricochet: { name: 'Sekme',        bounce: 2, desc: 'Vuruş 2 kez yakın hedefe seker.' },
-  multi:    { name: 'Çoklu Atış',   extra: 2, extraEff: 0.33, desc: '+2 mermi/hedef (toplam hasar +%65).' },
+  multi:    { name: 'Çoklu Atış',   extra: 2, extraEff: 0.33, desc: '+2 ek hedefe ışın (toplam hasar +%65).' },
   dot:      { name: 'Yakıcı (DoT)', dotPct: 0.5, dotDur: 3, desc: '3 sn boyunca vuruşun %50\'si/sn ek hasar.' },
   slow:     { name: 'Dondurucu',    slow: 0.35, slowDur: 1.5, desc: 'Vurulan hedef %35 yavaşlar.' },
-  homing:   { name: 'Güdümlü',      turn: 6, rangeMul: 1.2, desc: 'Mermiler hedefi takip eder, menzil +%20.' },
+  homing:   { name: 'Güdümlü',      turn: 6, rangeMul: 1.2, desc: 'Işın menzili +%20.' },
 };
 const PASSIVES = {
   power:     { name: 'Güç',         dmg: 0.2,  desc: 'Hasar +%20 / sv.' },
@@ -582,7 +583,7 @@ function makePlayer(id, el) {
   const pistol = par => {                                 // tabanca: ön kolun ucunda, namlu kol doğrultusunda
     const q = new THREE.Group(); q.position.y = -0.6; par.add(q);
     for (const ge of [new THREE.BoxGeometry(0.13, 0.52, 0.17).translate(0, -0.22, 0), new THREE.BoxGeometry(0.11, 0.15, 0.28).translate(0, 0.0, -0.15)]) { q.add(new THREE.Mesh(ge, INK)); const h = new THREE.Mesh(ge, HULL); h.scale.set(1.34, 1.07, 1.24); q.add(h); }
-    const tp = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.07, 0.2), lit); tp.position.y = -0.5; q.add(tp); return q;
+    const tp = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.07, 0.2), lit); tp.position.y = -0.5; q.add(tp); q.tip = new THREE.Object3D(); q.tip.position.y = -0.56; q.add(q.tip); return q;
   };
   p.armR = limb(0.62, body, 0.31, 2.74, 0); p.foreR = limb(0.6, p.armR, 0, -0.62, 0); p.pistR = pistol(p.foreR);
   p.armL = limb(0.62, body, -0.31, 2.74, 0); p.foreL = limb(0.6, p.armL, 0, -0.62, 0); p.pistL = pistol(p.foreL);
@@ -988,49 +989,46 @@ function triggerCombo(owner, c, elA, elB, baseDmg) {
   damageCreep(owner, c, dmg, def.name, false);
 }
 
-const _tg = [], _vis = [];
+
+const beamW = p => Math.min(CFG.beam.max, CFG.beam.w0 + CFG.beam.perLvl * (p.build.coreLvl - 1));
+/* Tüm silahlar ışın tipindedir: vuruş anlıktır. Oyuncunun ana hedefe giden ışını kesintisiz çizilir (updateHeroBeams);
+   ek hedefler (çoklu, yelpaze, sekme, zincir) kısa ömürlü ışınlarla gösterilir. */
 function fireHero(p, tgt) {
-  const core = CORES[p.build.core], m = p.modv, el = shotEl(p, p), col = ELEMENTS[el].color, range = heroRange(p), me = p === G.human;
+  const core = CORES[p.build.core], m = p.modv, el = shotEl(p, p), col = ELEMENTS[el].color, range = heroRange(p), me = p === G.human, w = beamW(p);
   const n0 = core.pellets || 1, n = n0 + m.extra;
   const dmg = core.dmg * p.stats.dmg * dmgMult(p) * (m.extra ? (n0 + m.extra * m.extraEff) / n : 1);
-  let dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1;
-  p.faceYaw = Math.atan2(dx, dz); p.faceT = 0.5; p.recoil = 1;
-  p.hand ^= 1; p.rec[p.hand] = 1; const sd = p.hand ? 0.36 : -0.36;                    // eller sırayla ateş eder
+  p.faceYaw = Math.atan2(tgt.x - p.x, tgt.z - p.z); p.faceT = 0.5; p.recoil = 1;
+  p.hand ^= 1; p.rec[p.hand] = 1; const sd = p.hand ? 0.36 : -0.36;                    // eller sırayla darbe verir
   const mx = p.x + Math.sin(p.faceYaw) * 1.9 + Math.cos(p.faceYaw) * sd, mz = p.z + Math.cos(p.faceYaw) * 1.9 - Math.sin(p.faceYaw) * sd;
-  spawnFx(mx, MUZZLE_Y, mz, core.kind === 'beam' ? 0.6 : 1.25, col, 0.08, true);          // namlu parlaması
-  if (me && core.kind !== 'beam') { const cs2 = Math.cos(p.faceYaw), sn2 = Math.sin(p.faceYaw); pushPix(mx - sn2 * 0.5, MUZZLE_Y, mz - cs2 * 0.5, cs2 * sd * rand(5, 9) - sn2 * 2, rand(4, 7), -sn2 * sd * rand(5, 9) - cs2 * 2, 0.13, 0.82, 0.82, 0.8, 0.9); }   // boş kovan
-  if (me) { SFX.shoot(core.kind, el); FEEL.shake(CFG.feel.trauma.shot * (core.kind === 'beam' ? 0.3 : core.aoe || core.pellets ? 2 : 1)); FEEL.kick += core.kind === 'beam' ? 0.05 : core.aoe || core.pellets ? 0.45 : 0.22; }
-  if (core.kind === 'proj') {
-    const tt = d / core.speed, sp = tgt.stunT > 0 ? 0 : tgt.speed * (tgt.slowT > 0 ? 1 - tgt.slowF : 1);
-    dx = tgt.x + tgt.ux * sp * tt - mx; dz = tgt.z + tgt.uz * sp * tt - mz;
-    const ang = Math.atan2(dx, dz), spread = core.spread || 0.11 * (n - 1);
-    for (let i = 0; i < n; i++) {
-      const a = ang + (n > 1 ? (i / (n - 1) - 0.5) * spread : 0);
-      spawnProj(p, mx, mz, Math.sin(a), Math.cos(a), core.speed, dmg, el, range / core.speed * 1.15,
-        { pierce: m.pierce, bounce: m.bounce, aoe: core.aoe, turn: m.turn, target: tgt, fx: m, small: !!core.pellets, kb: core.kb, kbMul: core.kbMul });
-    }
-  } else {
-    _tg.length = 0; _tg.push(tgt);
-    for (let i = 0; i < m.extra; i++) { const o = nearestCreep(p.x, p.z, range, _tg); if (!o) break; _tg.push(o); }
-    for (let i = 0; i < _tg.length; i++) {
-      if (core.kind === 'beam') beamHit(p, mx, mz, _tg[i], dmg, el, col, range, core);
-      else chainHit(p, mx, mz, _tg[i], dmg, el, col, core.jumps + m.bounce + m.pierce, core);
-    }
+  if (me) { SFX.shoot(core.kind === 'proj' ? 'chain' : core.kind, el); FEEL.shake(CFG.feel.trauma.shot * (core.rate > 5 ? 0.3 : core.aoe || core.pellets ? 2 : 1)); FEEL.kick += core.rate > 5 ? 0.05 : core.aoe || core.pellets ? 0.45 : 0.22; }
+  _tg.length = 0; _tg.push(tgt);
+  for (let i = 1; i < n; i++) { const o = nearestCreep(p.x, p.z, range, _tg, p.edge); if (!o) break; _tg.push(o); }
+  const spare = n - _tg.length;                                                           // hedef azsa kalan ışınlar ana hedefe biner
+  for (let i = 0; i < _tg.length; i++) {
+    const d = dmg * (i === 0 ? 1 + spare : 1);
+    if (core.kind === 'chain') chainHit(p, mx, mz, _tg[i], d, el, col, core.jumps + m.bounce + m.pierce, core);
+    else beamHit(p, mx, mz, _tg[i], d, el, col, range, core, w, i === 0);
   }
 }
-function beamHit(p, sx, sz, t, dmg, el, col, range, core) {
+const _tg = [], _vis = [];
+function beamHit(p, sx, sz, t, dmg, el, col, range, core, w, primary) {
   const m = p.modv;
-  spawnBeam(sx, MUZZLE_Y, sz, t.x, t.by, t.z, col, 0.13); spawnFx(t.x, t.by, t.z, 1.2, col, 0.1, true);
+  if (!(primary && p === G.human)) spawnBeam(sx, MUZZLE_Y, sz, t.x, t.by, t.z, col, w * 0.8);     // ana ışın zaten kesintisiz çiziliyor
+  spawnFx(t.x, t.by, t.z, 1.1 + w * 4, col, 0.1, true);
+  if (core.aoe) {
+    spawnFx(t.x, t.by, t.z, core.aoe, col, 0.3); spawnRing(t.x, t.z, core.aoe * 1.1, col, 0.35); if (p === G.human) FEEL.shake(0.1);
+    const r2 = core.aoe * core.aoe; for (const o of G.creeps) if (o.active && o !== t && o.lane === t.lane) { const ex = o.x - t.x, ez = o.z - t.z; if (ex * ex + ez * ez < r2) applyHit(p, o, dmg * 0.6, el, m, core.kb * 0.7, core.kbMul); }
+  }
   if (m.pierce > 0) {
     const dx = t.x - sx, dz = t.z - sz, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d; let left = m.pierce;
     for (const o of G.creeps) {
-      if (!o.active || o === t || left <= 0) continue;
+      if (!o.active || o === t || left <= 0 || o.lane !== t.lane) continue;
       const ox = o.x - sx, oz = o.z - sz, along = ox * ux + oz * uz;
-      if (along > 0 && along < range && Math.abs(ox * uz - oz * ux) < o.radius + 0.8) { applyHit(p, o, dmg * 0.6, el, m, core.kb, core.kbMul); left--; }
+      if (along > 0 && along < range && Math.abs(ox * uz - oz * ux) < o.radius + 0.8) { applyHit(p, o, dmg * 0.6, el, m, core.kb, core.kbMul); spawnFx(o.x, o.by, o.z, 1.2, col, 0.1, true); left--; }
     }
   }
   let cur = t; _vis.length = 0; _vis.push(t);
-  for (let i = 0; i < m.bounce; i++) { const o = nearestCreep(cur.x, cur.z, 9, _vis); if (!o) break; spawnBeam(cur.x, 1.3, cur.z, o.x, 1.3, o.z, col, 0.14); applyHit(p, o, dmg * 0.6, el, m, core.kb, core.kbMul); _vis.push(o); cur = o; }
+  for (let i = 0; i < m.bounce; i++) { const o = nearestCreep(cur.x, cur.z, 9, _vis, t.lane); if (!o) break; spawnBeam(cur.x, cur.by, cur.z, o.x, o.by, o.z, col, w * 0.6); applyHit(p, o, dmg * 0.6, el, m, core.kb, core.kbMul); _vis.push(o); cur = o; }
   applyHit(p, t, dmg, el, m, core.kb, core.kbMul);
 }
 function chainHit(p, sx, sz, first, dmg, el, col, jumps, core) {
@@ -1227,6 +1225,20 @@ const POSES = [                                                                 
   { name: 'GERİ YAY',  kn: 0,    wd: 0.6, yaw: 0,     lean: -0.45, R: [-1.25, 0],  L: [-1.25, 0],  look: 0 },
 ];
 const poseIndex = st => st >= CFG.stance.every ? Math.floor(st / CFG.stance.every) % POSES.length : 0;
+const HB = [];
+function makeHeroBeams() {
+  for (let h = 0; h < 2; h++) { const o = new THREE.Mesh(GEO.beam, new THREE.MeshBasicMaterial({ color: 0x0a0a0a, fog: false, side: THREE.BackSide })), c = new THREE.Mesh(GEO.beam, new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false })); o.renderOrder = 2; c.renderOrder = 3; o.visible = c.visible = false; scene.add(o); scene.add(c); HB.push({ o, c }); }
+}
+const _b1 = new THREE.Vector3();
+function updateHeroBeams() {
+  const p = G.human, t = G.state === 'wave' && p.alive && p.tgt && p.tgt.active ? p.tgt : null, w0 = beamW(p);
+  for (let h = 0; h < 2; h++) {
+    const B = HB[h]; if (!t) { B.o.visible = B.c.visible = false; continue; }
+    (h ? p.pistL : p.pistR).tip.getWorldPosition(_b1);
+    const w = w0 * (0.8 + 0.55 * p.rec[h]) * (0.94 + Math.random() * 0.12), len = Math.hypot(t.x - _b1.x, t.by - _b1.y, t.z - _b1.z) || 0.01;
+    for (const [m, ww] of [[B.o, w * 1.5 + 0.09], [B.c, w]]) { m.position.set((_b1.x + t.x) / 2, (_b1.y + t.by) / 2, (_b1.z + t.z) / 2); m.scale.set(ww, ww, len); m.lookAt(t.x, t.by, t.z); m.visible = true; }
+  }
+}
 function updateHeroCommon(p, dt) {
   if (p.faceT > 0) p.faceT -= dt;
   p.rec[0] = Math.max(0, p.rec[0] - dt * 9); p.rec[1] = Math.max(0, p.rec[1] - dt * 9);
@@ -1412,9 +1424,9 @@ const PASS_LBL = { dmg: ['Hasar', 1], rate: ['Atış hızı', 1], range: ['Menzi
 const f1 = v => String(Math.round(v * 10) / 10);
 function modText(id, lvl) {
   const m = MODS[id], ml = 1 + LVL.mod * (lvl - 1);
-  if (m.pierce) return 'Delme ' + Math.round(m.pierce * ml); if (m.bounce) return 'Sekme ' + Math.round(m.bounce * ml); if (m.extra) return '+' + (m.extra + lvl - 1) + ' mermi';
+  if (m.pierce) return 'Delme ' + Math.round(m.pierce * ml); if (m.bounce) return 'Sekme ' + Math.round(m.bounce * ml); if (m.extra) return '+' + (m.extra + lvl - 1) + ' ışın';
   if (m.dotPct) return '%' + Math.round(m.dotPct * ml * 100) + '/sn yanık'; if (m.slow) return '%' + Math.round(Math.min(0.7, m.slow * (1 + LVL.modSlow * (lvl - 1))) * 100) + ' yavaş';
-  return 'Dönüş ' + f1(m.turn * ml);
+  return 'Menzil +%20';
 }
 /* Kartın sayısal etkisi: [etiket, şimdiki (yoksa null), seçince]. */
 function cardStats(p, c) {
@@ -1511,7 +1523,7 @@ function loop(now) {
   let sdt = dt; if (FEEL.hitstop > 0) { FEEL.hitstop -= dt; sdt = dt * CFG.feel.hitstopScale; }      // hitstop: kısa zaman donması
   for (let i = 0; i < G.speed; i++) update(sdt);            // hızlandırma: aynı karede birden çok sim adımı
   FEEL.update(dt);
-  if (G.human) { updateCamera(dt); UI.frame(dt); }
+  if (G.human) { updateCamera(dt); updateHeroBeams(); UI.frame(dt); }
   if (composer && G.bloom) composer.render(); else renderer.render(scene, camera);
 }
 let VW = 360, VH = 640;
@@ -1526,7 +1538,7 @@ function init() {
   const els = shuffle(EL_KEYS.slice());                    // rastgele, tekrarsız element dağıtımı
   for (let i = 0; i < 6; i++) G.players.push(makePlayer(i, els[i]));
   G.human = G.players[0]; Cam.yaw = laneAng(0);
-  buildArena(); initPost(); UI.init(); UI.slots(); DesktopSource.init(); resize();
+  buildArena(); makeHeroBeams(); initPost(); UI.init(); UI.slots(); DesktopSource.init(); resize();
   document.querySelectorAll('#ctl button').forEach(b => b.onclick = () => { SFX.init(); Input.press(b.dataset.a); });
   const me = ELEMENTS[G.human.el];
   showOverlay('<h1>ALTIGEN REZONANS</h1><p>İstasyonun gövdesi yarıldı; koridorun ucunda bir kara delik açık. Sen bu beton koridorun bekçisisin ve bu ucundaki <b>geçidi koruyorsun</b>: mühür kristaline ulaşan her yaratık canını azaltır, mührü düşen elenir. 20 tur dayan.<br>' +
