@@ -115,7 +115,35 @@
   table.end{margin:22px auto 0;border-collapse:collapse;font-variant-numeric:tabular-nums;filter:grayscale(1)}
   table.end th{font-size:9px;font-weight:400;letter-spacing:.22em;text-transform:uppercase;color:var(--g2);padding:6px 16px}
   table.end td{padding:8px 16px;font-size:12px;color:var(--g1);border-top:1px solid var(--line)}table.end tr.me td{color:var(--w);font-weight:600}
+  #bossBar{position:relative;height:3px;margin:26px 0 0;background:rgba(255,255,255,.16);opacity:0;transition:opacity .3s}
+  #bossBar.on{opacity:1}#bossBar i{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--w);transition:width .15s}
+  #bossBar span{position:absolute;left:0;right:0;top:-13px;font-size:8px;letter-spacing:.4em;color:var(--w)}
+  #chainTxt{margin-top:12px}
+  #ctl{position:absolute;left:20px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;pointer-events:auto}
+  #ctl button{width:54px;height:34px;background:rgba(8,8,9,.5);border:1px solid var(--line);color:var(--g1);font:inherit;font-size:9px;letter-spacing:.18em;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+  #ctl button:hover,#ctl button:active{background:var(--w);color:#0a0a0b;border-color:var(--w)}
+  body.hud-off #ctl{opacity:.25}
+  .card.up::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--w)}
+  .card:hover.up::after{background:#0a0a0b}
+  .card .ic{font-weight:200}
   @media (max-width:900px){#feed{display:none}.keys{grid-template-columns:1fr}}
+  /* dikey ekran */
+  @media (orientation:portrait){
+    #top{width:78vw;top:14px}#board{top:74px;left:10px;min-width:0;width:62vw;padding:10px 12px}
+    #mini{width:96px;height:96px;right:10px;bottom:84px}
+    #streak{right:6%;top:17%}#streak b{font-size:46px}
+    #banner{font-size:20px;letter-spacing:.4em;text-indent:.4em;top:24%}
+    #bottom{bottom:18px;width:86vw;flex-wrap:wrap;justify-content:center;row-gap:10px}
+    #bars{min-width:0;width:100%;padding:0;order:2}#info{white-space:normal;text-align:center}
+    body.hud-open .slot{max-width:42vw;padding:0 10px}
+    #ctl{left:50%;top:auto;bottom:66px;transform:translateX(-50%);flex-direction:row}
+    .box{width:94%;padding:14px 0}.box h1{font-size:17px;letter-spacing:.32em;text-indent:.32em;margin-bottom:10px}.box p{font-size:12px}
+    .chips{row-gap:8px}.chip{padding:0 10px}
+    .cards{display:grid;grid-template-columns:1fr 1fr;width:100%;margin-top:16px}
+    .card{width:auto;padding:12px 12px 14px}.card .ic{font-size:24px;margin:14px 0 8px}.card .n{font-size:14px}
+    .card .d{font-size:11px;min-height:0;padding-bottom:8px}.card .st{font-size:10px;padding:5px 0}.card .pips{margin:5px 0 8px}
+    button.go{padding:13px 40px}
+  }
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -125,10 +153,11 @@
   <div id="fxv"></div>
   <div id="vig"></div>
   <div id="flash"></div>
-  <div id="top" class="panel"><div id="roundTxt">—</div><div id="coreBar"><i></i><span></span></div><div id="chainTxt"></div></div>
+  <div id="top" class="panel"><div id="roundTxt">—</div><div id="coreBar"><i></i><span></span></div><div id="bossBar"><i></i><span>BOSS</span></div><div id="chainTxt"></div></div>
   <div id="board" class="panel"></div>
   <canvas id="mini" width="170" height="170"></canvas>
   <div id="feed"></div>
+  <div id="ctl"><button data-a="speed" id="spd">x1</button><button data-a="mute" id="snd">SES</button><button data-a="hud">PANEL</button></div>
   <div id="streak"><b>x0</b><span>SERİ</span></div>
   <div id="bottom">
     <div class="panel slot" id="sCore"><b>SİLAH</b><span></span><small></small></div>
@@ -137,7 +166,7 @@
     <div class="panel slot" id="sEcho"><b>REZONANS</b><span></span><small></small></div>
     <div class="panel" id="bars">
       <div class="bar" id="stam"><i></i><span>STAMINA</span></div>
-      <div class="bar" id="ult"><i></i><span>ULT [F]</span></div>
+      <div class="bar" id="ult"><i></i><span>ULT</span></div>
       <div id="info"></div>
     </div>
   </div>
@@ -174,6 +203,7 @@ const CFG = {
   player:  { walk: 8, sprint: 13, stamina: 100, staminaDrain: 22, staminaRegen: 16 },
   crit:    { chance: 0.12, mult: 2.0 },
   target:  { danger: 12 },
+  camP:    { back: 10.5, la: 1.6, y: 8.3, ahead: 20, lookLa: -0.4, lookY: 0.4, fov: 12 },   // dikey ekran: arkadan-yukarıdan, koridor boyunca
   cam:     { back: 6.5, la: 5.6, y: 6.2, ahead: 13, lookLa: -3, lookY: 1.2 },   // sabit köşe kamerası: karakterin arka-üst köşesinden (koridor-yerel)                                  // bu mesafeden yakına giren yaratık her zaman ilk hedef
   combo:   { window: 2.0, icd: 0.9, splash: 0.7, echoLvl: 0.25 },
   ult:     { need: 100, perKill: 3, streakBonus: 0.03, streakCap: 20, radius: 17, dmg: 170, kb: 7 },
@@ -190,12 +220,12 @@ const CFG = {
 
 /* Element = kimlik + doğuştan vuruş özelliği (trait). */
 const ELEMENTS = {
-  FIRE:      { name: 'Ateş',     color: 0x0d0d0d, icon: '🔥', tone: 196, trait: { dot: 0.4, dotDur: 2.5 },            tdesc: 'Yakar: 2,5 sn ek hasar' },
-  WATER:     { name: 'Su',       color: 0x0d0d0d, icon: '💧', tone: 262, trait: { slow: 0.28, slowDur: 1.3 },         tdesc: 'Yavaşlatır' },
-  EARTH:     { name: 'Toprak',   color: 0x0d0d0d, icon: '⛰️', tone: 147, trait: { kb: 0.35, stunCh: 0.1, stun: 0.6 }, tdesc: 'İter, %10 sersemletir' },
-  AIR:       { name: 'Hava',     color: 0x0d0d0d, icon: '🌪️', tone: 330, trait: { kb: 0.6 },                          tdesc: 'Güçlü geri itme' },
-  LIGHTNING: { name: 'Yıldırım', color: 0x0d0d0d, icon: '⚡', tone: 392, trait: { arcCh: 0.22, arc: 0.6 },            tdesc: '%22 yakındakine sıçrar' },
-  POISON:    { name: 'Zehir',    color: 0x0d0d0d, icon: '☠️', tone: 220, trait: { vuln: 2.5 },                        tdesc: 'Hedefi zayıflatır (+%30 hasar alır)' },
+  FIRE:      { name: 'Ateş',     color: 0x0d0d0d, icon: '△', tone: 196, trait: { dot: 0.4, dotDur: 2.5 },            tdesc: 'Yakar: 2,5 sn ek hasar' },
+  WATER:     { name: 'Su',       color: 0x0d0d0d, icon: '▽', tone: 262, trait: { slow: 0.28, slowDur: 1.3 },         tdesc: 'Yavaşlatır' },
+  EARTH:     { name: 'Toprak',   color: 0x0d0d0d, icon: '▢', tone: 147, trait: { kb: 0.35, stunCh: 0.1, stun: 0.6 }, tdesc: 'İter, %10 sersemletir' },
+  AIR:       { name: 'Hava',     color: 0x0d0d0d, icon: '○', tone: 330, trait: { kb: 0.6 },                          tdesc: 'Güçlü geri itme' },
+  LIGHTNING: { name: 'Yıldırım', color: 0x0d0d0d, icon: 'ϟ', tone: 392, trait: { arcCh: 0.22, arc: 0.6 },            tdesc: '%22 yakındakine sıçrar' },
+  POISON:    { name: 'Zehir',    color: 0x0d0d0d, icon: '✕', tone: 220, trait: { vuln: 2.5 },                        tdesc: 'Hedefi zayıflatır (+%30 hasar alır)' },
 };
 const EL_KEYS = Object.keys(ELEMENTS);
 
@@ -605,6 +635,7 @@ for (const m of [voxMesh, pixMesh]) { m.frustumCulled = false; m.setColorAt(0, P
 function voxInit(c) {
   const P = PAT[c.type], vs = c.vsz = c.radius * 2 / P.w, bi = Math.random() * PAL.length | 0, base = PAL[bi], acc = PAL[(bi + 3 + (Math.random() * 3 | 0)) % PAL.length], boss = c.type === 'boss';
   if (!c.vc) { c.vc = new Float32Array(PATMAX * 3); c.vs = new Float32Array(PATMAX * 3); }
+  c.c1 = base; c.c2 = acc;
   for (let i = 0; i < P.cells.length; i++) {
     const q = P.cells[i], kd = q[3]; let r, g, b;
     if (kd === 'o') r = g = b = 1; else if (kd === 'x') r = g = b = 0.04;
@@ -726,13 +757,13 @@ function spawnBeam(x1, y1, z1, x2, y2, z2, color, w) {
 }
 const SPLATG = new THREE.CircleGeometry(1, 9);
 const splatPool = new Pool(CFG.pools.splats, () => { const m = new THREE.Mesh(SPLATG, new THREE.MeshBasicMaterial({ color: 0x0b0b0b, transparent: true, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m); return { mesh: m }; });
-function spawnSplat(x, z, r) {            // ölen yaratığın yerde bıraktığı mürekkep izi: ana leke + sıçramalar
+function spawnSplat(x, z, r, c1, c2) {            // ölen yaratığın yerde bıraktığı mürekkep izi: ana leke + sıçramalar
   if (FXOFF) return;
   for (let i = 0; i < 5; i++) {
     const f = splatPool.get(); if (!f) return;
     const a = Math.random() * TAU, d = i ? rand(0.6, 1.9) * r : 0, sc = i ? rand(0.12, 0.38) * r : r;
     f.t = 0; f.life = rand(7, 11); f.mesh.position.set(x + Math.cos(a) * d, 0.03 + i * 0.002, z + Math.sin(a) * d); f.mesh.scale.set(sc * rand(0.7, 1.3), sc * rand(0.7, 1.3), 1); f.mesh.rotation.z = a;
-    f.mesh.material.opacity = 0.85; f.mesh.visible = true; G.splats.push(f);
+    f.mesh.material.color.copy(i % 3 === 2 ? c2 : c1).multiplyScalar(i ? rand(0.8, 1.1) : 1); f.mesh.material.opacity = 0.85; f.mesh.visible = true; G.splats.push(f);
   }
 }
 const debrisPool = new Pool(CFG.pools.debris, () => { const m = new THREE.Mesh(GEO.debris, DEBMAT[0]); m.visible = false; scene.add(m); return { mesh: m }; });
@@ -803,15 +834,18 @@ const FEEL = {
   shake(v) { this.trauma = Math.min(1, this.trauma + v); },
   stop(t) { this.hitstop = Math.max(this.hitstop, t); },
   flash() { const e = $('flash'); e.className = ''; void e.offsetWidth; e.className = 'on'; },
-  marker(cls) { const e = $('hm'); e.className = ''; void e.offsetWidth; e.className = 'on ' + (cls || ''); },
+  marker(cls, c) {                                         // vuruş imi: ekran ortasında değil, vurulan yaratığın üzerinde
+    const e = $('hm'); _v.set(c.x, c.by, c.z).project(camera); if (_v.z > 1 || _v.z < -1) return;
+    e.style.left = ((_v.x * 0.5 + 0.5) * innerWidth | 0) + 'px'; e.style.top = ((-_v.y * 0.5 + 0.5) * innerHeight | 0) + 'px'; e.className = ''; void e.offsetWidth; e.className = 'on ' + (cls || '');
+  },
   hit(c, crit) {
-    SFX.hit(); this.marker(crit ? 'crit' : ''); hitPix(c, 2);
+    SFX.hit(); this.marker(crit ? 'crit' : '', c); hitPix(c, 2);
     if (crit) { SFX.crit(); this.shake(CFG.feel.trauma.crit); hitPix(c, 7); spawnRing(c.x, c.z, 2.6, 0xffd23a, 0.25); }
   },
   kill(c) {
     const T = CFG.feel.trauma, boss = c.type === 'boss';
     this.streak++; this.streakT = CFG.feel.streakWindow; if (this.streak > this.best) this.best = this.streak;
-    SFX.kill(this.streak); this.marker('kill'); this.shake(boss ? T.boss : T.kill);
+    SFX.kill(this.streak); this.marker('kill', c); this.shake(boss ? T.boss : T.kill);
     if (boss) { this.stop(0.3); this.flash(); SFX.bossDie(); banner('BOSS YIKILDI!', '#ffd76a'); } else if (c.type === 'tank') this.stop(0.05);
     const s = $('streak');
     s.lastElementChild.textContent = POSES[poseIndex(this.streak)].name;
@@ -857,7 +891,7 @@ function killCreep(owner, c) {
   const boss = c.type === 'boss', me = owner === G.human;
   removeCreep(c); owner.kills++;
   const U = CFG.ult; owner.ult = Math.min(U.need, owner.ult + U.perKill * c.T.ult * owner.stats.ult * (me ? 1 + Math.min(FEEL.streak, U.streakCap) * U.streakBonus : 1));
-  burstCreep(c); spawnSplat(c.x, c.z, c.radius * (boss ? 1.5 : 1.1));
+  burstCreep(c); spawnSplat(c.x, c.z, c.radius * (boss ? 1.5 : 1.1), c.c1, c.c2);
   spawnBeam(c.x, 0.2, c.z, c.x, boss ? 15 : 6.5, c.z, c.T.eye, boss ? 1.4 : 0.4); spawnRing(c.x, c.z, c.radius * (boss ? 9 : 4.6), c.T.eye, boss ? 0.9 : 0.42);
   spawnFx(c.x, c.by, c.z, c.radius * (boss ? 4 : 2.4), c.T.eye, boss ? 0.6 : 0.22);
   spawnRing(c.x, c.z, c.radius * (boss ? 6 : 3), 0xffffff, boss ? 0.7 : 0.3);
@@ -1106,14 +1140,14 @@ const Cam = { yaw: 0, pitch: 0.13, dist: 5.6, shoulder: 2.0, height: 3.5, sens: 
 const _v = new THREE.Vector3(), _dir = new THREE.Vector3();
 /* Sabit kamera: geçidin üst köşesinden, koridoru çaprazlama gören geniş açı. Oyuncu kamerayı yönetmez. */
 function updateCamera(dt) {
-  const p = G.human, d = p.dir, C = CFG.cam; Input.look.dx = Input.look.dy = 0;
+  const p = G.human, d = p.dir, tall = innerHeight > innerWidth, C = tall ? CFG.camP : CFG.cam; Input.look.dx = Input.look.dy = 0;
   const SS = CFG.feel.streakShake, sk = FEEL.streak >= SS.from ? Math.min(FEEL.streak, SS.cap) / SS.cap : 0, tr = Math.max(FEEL.trauma, sk * SS.floor);
   const sh = tr * tr * CFG.feel.shakeMax * (1 + sk * SS.bonus), al = CFG.arena.postAl - C.back, la = C.la, la2 = C.lookLa, al2 = CFG.arena.postAl + C.ahead, j = () => (Math.random() - 0.5) * 2 * sh;
   const sw = Math.sin(performance.now() * 0.00035), al3 = al + sw * 0.5, la3 = la + Math.cos(performance.now() * 0.00027) * 0.35;          // hafif nefes alan kamera
   camera.position.set(d[0] * al3 + d[1] * la3 + j(), C.y + sw * 0.15 + j(), d[1] * al3 - d[0] * la3 + j());
   camera.lookAt(d[0] * al2 + d[1] * la2, C.lookY, d[1] * al2 - d[0] * la2);
   camera.rotation.z += (Math.random() - 0.5) * sh * 0.05;
-  const f = Cam.baseFov + Math.min(2.2, FEEL.kick) * 2.4; Cam.fov += (f - Cam.fov) * Math.min(1, dt * 12);
+  const f = Cam.baseFov + (tall ? CFG.camP.fov : 0) + Math.min(2.2, FEEL.kick) * 2.4; Cam.fov += (f - Cam.fov) * Math.min(1, dt * 12);
   if (Math.abs(camera.fov - Cam.fov) > 0.01) { camera.fov = Cam.fov; camera.updateProjectionMatrix(); }
 }
 function aimTarget(p, range) {
@@ -1251,6 +1285,8 @@ const UI = {
     for (const o of G.players) h += '<div class="row' + (o === p ? ' me' : '') + '"' + (o.alive ? '' : ' style="opacity:.4"') + '><span>' + ELEMENTS[o.el].icon + '</span><span>' + o.name + '</span><span>' + o.kills + '</span><span class="pb"><i style="width:' + (o.core / CFG.core.hp * 100) + '%"></i></span><span class="lk">' + (o.alive ? Math.ceil(o.core) : '✖') + '</span></div>';
     $('board').innerHTML = h;
     $('info').innerHTML = 'Hız <b>x' + G.speed + '</b> [G] · Krit <b>%' + Math.round(p.stats.crit * 100) + '</b> · En iyi seri <b>x' + FEEL.best + '</b>';
+    const bs = G.creeps.find(c => c.active && c.lane === 0 && c.type === 'boss'), bb = $('bossBar'); bb.className = bs ? 'on' : ''; if (bs) bb.firstElementChild.style.width = Math.max(0, bs.hp / bs.maxHp * 100) + '%';
+    $('spd').textContent = 'x' + G.speed; $('snd').style.opacity = SFX.on ? 1 : 0.4;
     this.drawMini();
   },
   frame(dt) {
@@ -1265,7 +1301,7 @@ const UI = {
     const W = innerWidth, H = innerHeight, cr = $('cross'), hm = $('hm'), tg = G.lock && p.tgt && p.tgt.active ? p.tgt : null;
     let cxp = '50%', cyp = '50%';
     if (tg) { _v.set(tg.x, tg.by, tg.z).project(camera); if (_v.z < 1 && _v.z > -1) { cxp = ((_v.x * 0.5 + 0.5) * W | 0) + 'px'; cyp = ((-_v.y * 0.5 + 0.5) * H | 0) + 'px'; } }
-    cr.style.left = hm.style.left = cxp; cr.style.top = hm.style.top = cyp; cr.className = tg ? 'locked' : ''; cr.style.display = tg ? 'block' : 'none';
+    cr.style.left = cxp; cr.style.top = cyp; cr.className = tg ? 'locked' : ''; cr.style.display = tg ? 'block' : 'none';
     for (let i = this.pops.length - 1; i >= 0; i--) {
       const o = this.pops[i]; o.t += dt;
       if (o.t >= o.life) { o.el.style.display = 'none'; this.popPool.put(o); this.pops[i] = this.pops[this.pops.length - 1]; this.pops.pop(); continue; }
@@ -1320,8 +1356,8 @@ function cardText(p, c) {
   return [e.icon + ' ' + e.name, 'Atışların ' + ELEMENTS[p.el].name + ' / ' + e.name + ' dönüşümlü gider → <b>' + cb.name + '</b> kombosu (x' + cb.mult + '). ' + e.tdesc + '.'];
 }
 const SLOT_C = { core: '#fff', mod: '#fff', passive: '#fff', echo: '#fff' };
-const ICONS = { single: '◎', arc: '💥', beam: '🔦', chain: '⚡', scatter: '✸', pierce: '➹', ricochet: '↯', multi: '⫶', dot: '🔥', slow: '❄️', homing: '🎯',
-  power: '💪', haste: '⏩', reach: '📡', sharp: '👁️', brutal: '🗡️', charger: '🔋', mender: '🛠️', resonator: '🔊', impact: '🔨' };
+const ICONS = { single: '◎', arc: '◍', beam: '═', chain: 'ϟ', scatter: '⁙', pierce: '➤', ricochet: '⤴', multi: '⫶', dot: '♨', slow: '✳', homing: '◉',
+  power: '▲', haste: '»', reach: '⟷', sharp: '◇', brutal: '✦', charger: '↯', mender: '✚', resonator: '∿', impact: '⬣' };
 const PASS_LBL = { dmg: ['Hasar', 1], rate: ['Atış hızı', 1], range: ['Menzil', 1], crit: ['Kritik şansı', 1], critMult: ['Kritik hasarı', 1], ult: ['Ult dolumu', 1], combo: ['Kombo hasarı', 1], kb: ['Geri itme', 1], mend: ['Tur sonu onarım', 0] };
 const f1 = v => String(Math.round(v * 10) / 10);
 function modText(id, lvl) {
@@ -1361,7 +1397,7 @@ function renderDraft() {
     chip('REZONANS', b.echo ? ELEMENTS[b.echo].icon + ' ' + COMBOS[comboKey(hp.el, b.echo)].name + ' Lv' + b.echoLvl : '—') + '</div><div class="cards">';
   draftCards.forEach((c, i) => {
     const tx = cardText(hp, c), cur = b[c.slot], up = cur === c.id, lv = b[c.slot + 'Lvl'], nl = up ? lv + 1 : lv;
-    h += '<div class="card" style="--c:' + SLOT_C[c.slot] + '" data-i="' + i + '"><div class="hd"><span>' + SLOT_T[c.slot][0] + '</span><span class="key">' + (i + 1) + '</span></div>' +
+    h += '<div class="card' + (up ? ' up' : '') + '" data-i="' + i + '"><div class="hd"><span>' + SLOT_T[c.slot][0] + '</span><span class="key">' + (i + 1) + '</span></div>' +
       '<div class="ic">' + (c.slot === 'echo' ? ELEMENTS[c.id].icon : ICONS[c.id] || '◆') + '</div><div class="n">' + (c.slot === 'echo' ? ELEMENTS[c.id].name : tx[0]) + '</div>' +
       '<div class="pips">' + '●'.repeat(Math.min(up ? lv : nl, 10)) + (up ? '<i>◆</i>' : '') + '  Lv ' + nl + '</div><div class="d">' + tx[1] + '</div>';
     for (const r of cardStats(hp, c)) h += '<div class="st"><span>' + r[0] + '</span><b>' + (r[1] != null && String(r[1]) !== String(r[2]) ? r[1] + ' → <i>' + r[2] + '</i>' : '<i>' + r[2] + '</i>') + '</b></div>';
@@ -1439,12 +1475,13 @@ function init() {
   for (let i = 0; i < 6; i++) G.players.push(makePlayer(i, els[i]));
   G.human = G.players[0]; Cam.yaw = laneAng(0);
   buildArena(); initPost(); UI.init(); UI.slots(); DesktopSource.init(); resize();
+  document.querySelectorAll('#ctl button').forEach(b => b.onclick = () => { SFX.init(); Input.press(b.dataset.a); });
   const me = ELEMENTS[G.human.el];
   showOverlay('<h1>ALTIGEN REZONANS</h1><p>İstasyonun gövdesi yarıldı; koridorun ucunda bir kara delik açık. Sen bu beton koridorun bekçisisin ve bu ucundaki <b>geçidi koruyorsun</b>: mühür kristaline ulaşan her yaratık canını azaltır, mührü düşen elenir. 20 tur dayan.<br>' +
     'Elementin: <b style="color:' + hex(me.color) + '">' + me.icon + ' ' + me.name + '</b> — ' + me.tdesc + '. Kamera sabit; savaşı izle, build\'i sen yönet.</p>' +
     '<div class="keys"><div><b>Otomatik</b>: karakter ortada durur, hedefini seçer, ateş eder ve ultisini kendi kullanır</div><div><b>Sen</b>: tur aralarında kart seçerek build\'i kurarsın (tıkla ya da 1–4)</div>' +
-    '<div><b>G</b> oyun hızı x1 / x2 / x3</div><div><b>Tab</b> panelleri aç / kapat · <b>H</b> arayüzü gizle</div>' +
-    '<div><b>[ ]</b> görüş açısı</div><div><b>M</b> ses · <b>B</b> ışıma</div></div>' +
+    '<div><b>Hız · Ses · Panel</b>: ekrandaki düğmeler (ya da G · M · Tab)</div><div><b>Dikey ekran</b>: telefonu dik tut, kadraj kendini ayarlar</div>' +
+    '<div><b>[ ]</b> görüş açısı · <b>H</b> arayüzü gizle</div><div><b>Yaratıklar</b>: sahnedeki tek renk onlar</div></div>' +
     '<button class="go" id="goBtn">BAŞLA</button>');
   $('goBtn').onclick = () => { SFX.init(); hideOverlay(); startRound(1); };
   if (AUTO) { hideOverlay(); startRound(1); }
