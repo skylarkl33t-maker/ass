@@ -79,7 +79,8 @@
   #popups{position:absolute;inset:0;overflow:hidden}
   .pop{position:absolute;left:0;top:0;display:none;will-change:transform,opacity}
   .pop span{display:block;font-weight:400;font-size:12px;color:#fff;text-shadow:0 0 6px #000,0 1px 2px #000;white-space:nowrap;font-variant-numeric:tabular-nums;animation:popin .14s ease-out}
-  .pop.crit span{font-size:24px;font-weight:600}
+  .pop.crit span{font-size:20px;font-weight:600}
+  .pop.streak span{font-weight:600;letter-spacing:.04em;color:#fff;background:#0b0b0b;padding:1px 5px}
   .pop.combo span{font-size:11px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;border-bottom:1px solid #fff;padding-bottom:2px}
   @keyframes popin{from{transform:scale(1.9)}to{transform:scale(1)}}
   #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(4,4,5,.84);backdrop-filter:blur(16px) grayscale(1);-webkit-backdrop-filter:blur(16px) grayscale(1);pointer-events:auto;transition:opacity .45s,visibility .45s}
@@ -865,9 +866,8 @@ const FEEL = {
     this.streak++; this.streakT = CFG.feel.streakWindow; if (this.streak > this.best) this.best = this.streak;
     SFX.kill(this.streak); this.marker('kill', c); this.shake(boss ? T.boss : T.kill);
     if (boss) { this.stop(0.3); this.flash(); SFX.bossDie(); banner('BOSS YIKILDI!', '#ffd76a'); } else if (c.type === 'tank') this.stop(0.05);
-    const s = $('streak');
-    s.lastElementChild.textContent = POSES[poseIndex(this.streak)].name;
-    if (this.streak >= 3) { s.firstElementChild.textContent = 'x' + this.streak; s.style.opacity = 1; s.style.transform = 'scale(' + Math.min(1.6, 1 + this.streak * 0.02) + ')'; s.className = ''; void s.offsetWidth; s.className = 'bump'; }
+    if (this.streak >= 2) popup(c.x, c.h + 1.4, c.z, 'x' + this.streak, 'streak', 12 + Math.min(this.streak, 40) * 0.3);       // çarpan, ölen yaratığın üstünde
+    const pi = poseIndex(this.streak); if (pi !== this.pose) { this.pose = pi; if (this.streak >= CFG.stance.every) comboBanner(POSES[pi].name); }
   },
   update(dt) {
     const F = CFG.feel;
@@ -1332,7 +1332,8 @@ const UI = {
       _v.set(o.x + o.dx * o.t, o.y + o.t * 2.6, o.z).project(camera);
       if (_v.z > 1 || _v.z < -1) { o.el.style.opacity = 0; continue; }
       o.el.style.opacity = 1 - (o.t / o.life) ** 3;
-      o.el.style.transform = 'translate(' + ((_v.x * 0.5 + 0.5) * W | 0) + 'px,' + ((-_v.y * 0.5 + 0.5) * H | 0) + 'px) translate(-50%,-50%)';
+      o.sx = (_v.x * 0.5 + 0.5) * W; o.sy = (-_v.y * 0.5 + 0.5) * H - o.oy;
+      o.el.style.transform = 'translate(' + (o.sx | 0) + 'px,' + (o.sy | 0) + 'px) translate(-50%,-50%)';
     }
   },
   drawMini() {            // şerit radarı: üstte kapı, altta çekirdeğin, halka = menzilin
@@ -1349,10 +1350,15 @@ const UI = {
     g.fillStyle = '#fff'; g.beginPath(); g.moveTo(X(0), Y(A.coreAl) - 6); g.lineTo(X(0) + 5, Y(A.coreAl)); g.lineTo(X(0), Y(A.coreAl) + 6); g.lineTo(X(0) - 5, Y(A.coreAl)); g.closePath(); g.fill();
   },
 };
-function popup(x, y, z, text, cls) {
+function popup(x, y, z, text, cls, size) {
   let o = UI.popPool.get();
   if (!o) { if (!cls) return; o = UI.pops.shift(); if (!o) return; }
-  o.x = x; o.y = y; o.z = z; o.dx = rand(-1.2, 1.2); o.t = 0; o.life = cls === 'combo' ? 1.2 : cls === 'crit' ? 0.9 : 0.6;
+  o.x = x; o.y = y; o.z = z; o.dx = rand(-1.2, 1.2); o.t = 0; o.life = cls === 'combo' ? 1.2 : cls === 'crit' ? 0.9 : cls === 'streak' ? 0.85 : 0.6; if (cls) o.dx = 0;
+  o.el.firstChild.style.fontSize = size ? size + 'px' : '';
+  // üst üste binmeyi önle: aynı ekran bölgesinde yazı varsa yukarı kaydır
+  _v.set(x, y, z).project(camera); const sx = (_v.x * 0.5 + 0.5) * VW, sy = (-_v.y * 0.5 + 0.5) * VH; let oy = 0;
+  for (let k = 0; k < 8; k++) { let hit = false; for (const q of UI.pops) if (Math.abs(q.sx - sx) < 54 && Math.abs(q.sy - (sy - oy)) < 18) { hit = true; break; } if (!hit) break; oy += 19; }
+  o.oy = oy; o.sx = sx; o.sy = sy - oy;
   o.el.firstChild.textContent = text; o.el.className = 'pop ' + (cls || ''); o.el.style.display = 'none'; void o.el.offsetWidth; o.el.style.display = 'block'; o.el.style.opacity = 0; UI.pops.push(o);
 }
 function feed(html) {
