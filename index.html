@@ -181,7 +181,7 @@ const CFG = {
   flawless:{ dmgPerChain: 0.08, maxChain: 5, extraCards: 1 },
   bot:     { dmgBonus: 1.35, wander: 5 },
 
-  stance:  { tiers: [6, 14, 24], names: ['SERİ', 'ODAK · DİZ ÇÖK', 'ÖFKE · AYAKTA', 'TRANS'], flourishEvery: 2.8 },   // seri eşikleri → duruş
+  stance:  { every: 5 },                                    // serinin her 5 katında bir sonraki şov duruşu (POSES)
   feel:    { streakWindow: 2.6, shakeMax: 0.9, shakeDecay: 2.2, hitstopScale: 0.05, kickDecay: 9,
              streakShake: { from: 5, cap: 30, floor: 0.24, bonus: 1.1 },   // seri büyüdükçe sürekli titreşim (tavanlı)
              trauma: { shot: 0.035, crit: 0.14, kill: 0.1, combo: 0.26, ult: 0.9, leak: 0.7, boss: 1 } },
@@ -190,12 +190,12 @@ const CFG = {
 
 /* Element = kimlik + doğuştan vuruş özelliği (trait). */
 const ELEMENTS = {
-  FIRE:      { name: 'Ateş',     color: 0xff5a2a, icon: '🔥', tone: 196, trait: { dot: 0.4, dotDur: 2.5 },            tdesc: 'Yakar: 2,5 sn ek hasar' },
-  WATER:     { name: 'Su',       color: 0x3aa0ff, icon: '💧', tone: 262, trait: { slow: 0.28, slowDur: 1.3 },         tdesc: 'Yavaşlatır' },
-  EARTH:     { name: 'Toprak',   color: 0xd09a4a, icon: '⛰️', tone: 147, trait: { kb: 0.35, stunCh: 0.1, stun: 0.6 }, tdesc: 'İter, %10 sersemletir' },
-  AIR:       { name: 'Hava',     color: 0xbdf3f7, icon: '🌪️', tone: 330, trait: { kb: 0.6 },                          tdesc: 'Güçlü geri itme' },
-  LIGHTNING: { name: 'Yıldırım', color: 0xffe23a, icon: '⚡', tone: 392, trait: { arcCh: 0.22, arc: 0.6 },            tdesc: '%22 yakındakine sıçrar' },
-  POISON:    { name: 'Zehir',    color: 0x7ddc3a, icon: '☠️', tone: 220, trait: { vuln: 2.5 },                        tdesc: 'Hedefi zayıflatır (+%30 hasar alır)' },
+  FIRE:      { name: 'Ateş',     color: 0x0d0d0d, icon: '🔥', tone: 196, trait: { dot: 0.4, dotDur: 2.5 },            tdesc: 'Yakar: 2,5 sn ek hasar' },
+  WATER:     { name: 'Su',       color: 0x0d0d0d, icon: '💧', tone: 262, trait: { slow: 0.28, slowDur: 1.3 },         tdesc: 'Yavaşlatır' },
+  EARTH:     { name: 'Toprak',   color: 0x0d0d0d, icon: '⛰️', tone: 147, trait: { kb: 0.35, stunCh: 0.1, stun: 0.6 }, tdesc: 'İter, %10 sersemletir' },
+  AIR:       { name: 'Hava',     color: 0x0d0d0d, icon: '🌪️', tone: 330, trait: { kb: 0.6 },                          tdesc: 'Güçlü geri itme' },
+  LIGHTNING: { name: 'Yıldırım', color: 0x0d0d0d, icon: '⚡', tone: 392, trait: { arcCh: 0.22, arc: 0.6 },            tdesc: '%22 yakındakine sıçrar' },
+  POISON:    { name: 'Zehir',    color: 0x0d0d0d, icon: '☠️', tone: 220, trait: { vuln: 2.5 },                        tdesc: 'Hedefi zayıflatır (+%30 hasar alır)' },
 };
 const EL_KEYS = Object.keys(ELEMENTS);
 
@@ -477,12 +477,12 @@ function buildArena() {
   box(hw * 2, 2.4, 2.8, 0, H - 1.2, a0 + 1.4, cA, true); box(0.16, H - 2.4, 0.3, 0, (H - 2.4) / 2, a0 + 1.1, ink);
   const veil = new THREE.Mesh(new THREE.PlaneGeometry(hw * 2 - 5.6, H - 2.4), glow(0xffffff, 0.05)); veil.position.set(0, (H - 2.4) / 2, a0 + 1.9); g.add(veil);
   const base = edge(new THREE.Mesh(new THREE.CylinderGeometry(A.coreR, A.coreR + 1.3, 1.4, 6), cB)); base.position.set(0, 0.7, A.coreAl); base.castShadow = true; g.add(base);
-  const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.7), mat(col, col, 0.9)); core.scale.y = 1.6; core.position.set(0, 4.8, A.coreAl); g.add(core);
+  const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.7), mat(0xffffff, 0xffffff, 0.9)); core.scale.y = 1.6; core.position.set(0, 4.8, A.coreAl); g.add(core);
   core.add(new THREE.LineSegments(new THREE.EdgesGeometry(core.geometry), INKL));
   const ring = new THREE.Mesh(new THREE.TorusGeometry(2.9, 0.07, 4, 32), ink); ring.position.copy(core.position); g.add(ring);
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.8, 3, 8, 1, true), glow(col, 0.2)); beam.position.set(0, 7.9, A.coreAl); beam.visible = false; g.add(beam);
   const off = { offset: { x: 0, y: 0 } }, nol = { intensity: 0, color: new THREE.Color() };
-  SC = { frameMats, l3: nol, flash: [0, 0, 0], portalW: { x: p.dir[0] * (a1 + 2), y: H / 2, z: p.dir[1] * (a1 + 2) }, core, ring, beam, veil, pr1, pr2, pr3, light: nol, col, ribMats, fans: [], pulses: [], ceilMats, starTex: off, dataTex: off, a0, a1, len, hw, H };
+  SC = { frameMats, l3: nol, flash: [0, 0, 0], portalW: { x: p.dir[0] * (a1 + 2), y: H / 2, z: p.dir[1] * (a1 + 2) }, core, ring, beam, veil, pr1, pr2, pr3, light: nol, col: 0xffffff, ribMats, fans: [], pulses: [], ceilMats, starTex: off, dataTex: off, a0, a1, len, hw, H };
   // gölge
   const d = p.dir; sun.target.position.set(d[0] * mid, 0, d[1] * mid); scene.add(sun.target); sun.position.set(d[0] * mid + 25, 95, d[1] * mid + 18);
   Object.assign(sun.shadow.camera, { left: -52, right: 52, top: 52, bottom: -52, near: 10, far: 220 }); sun.shadow.camera.updateProjectionMatrix();
@@ -508,7 +508,7 @@ function makePlayer(id, el) {
   };
   // çöp adam: siyah çizgi gövde + beyaz kontur (ters kabuk), yuvarlak baş; eklemler kalça/diz/omuz/dirsekten döner
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body); p.body = body; g.scale.setScalar(1.15);
-  const INK = new THREE.MeshBasicMaterial({ color: 0x0b0b0b }), HULL = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide }), lit = new THREE.MeshBasicMaterial({ color: col });
+  const INK = new THREE.MeshBasicMaterial({ color: 0x0b0b0b }), HULL = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide }), lit = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const R = 0.08, O = 0.045;
   const limb = (L, par, x, y, z) => {                      // pivotu üst ucunda olan çizgi parça
     const q = new THREE.Group(); q.position.set(x, y, z); par.add(q);
@@ -527,13 +527,14 @@ function makePlayer(id, el) {
   p.head = new THREE.Group(); p.head.position.set(0, 3.22, 0); body.add(p.head);
   const hd = new THREE.Mesh(new THREE.SphereGeometry(0.36, 20, 14), INK); hd.castShadow = true; p.head.add(hd); p.head.add(new THREE.Mesh(new THREE.SphereGeometry(0.36 + O, 20, 14), HULL));
   const eye = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.05, 0.04), new THREE.MeshBasicMaterial({ color: 0xffffff })); eye.position.set(0, 0.04, 0.345); p.head.add(eye);
-  p.armL = limb(0.62, body, -0.04, 2.66, 0); p.armL.rotation.set(-0.95, 0, 0.3); const fl = limb(0.6, p.armL, 0, -0.62, 0); fl.rotation.x = -0.75;
-  p.gun = new THREE.Group(); p.gun.position.set(0.04, 2.66, 0); body.add(p.gun);
-  const ar = limb(0.62, p.gun, 0, 0, 0); ar.rotation.set(-0.8, 0, -0.12); const fr = limb(0.6, ar, 0, -0.62, 0); fr.rotation.x = -0.77;
-  const rf = new THREE.Group(); rf.position.set(0.02, -0.34, 0.95); p.gun.add(rf);                                 // tüfek: tek kalın çizgi + renkli uç
-  const rg = new THREE.BoxGeometry(0.12, 0.18, 1.25); rf.add(new THREE.Mesh(rg, INK)); const rh = new THREE.Mesh(rg, HULL); rh.scale.set(1.75, 1.5, 1.07); rf.add(rh);
-  const st = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3, 0.14), INK); st.position.set(0, -0.2, -0.2); rf.add(st);
-  const tip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.22), lit); tip.position.z = 0.74; rf.add(tip);
+  const pistol = par => {                                 // tabanca: ön kolun ucunda, namlu kol doğrultusunda
+    const q = new THREE.Group(); q.position.y = -0.6; par.add(q);
+    for (const ge of [new THREE.BoxGeometry(0.13, 0.52, 0.17).translate(0, -0.22, 0), new THREE.BoxGeometry(0.11, 0.15, 0.28).translate(0, 0.0, -0.15)]) { q.add(new THREE.Mesh(ge, INK)); const h = new THREE.Mesh(ge, HULL); h.scale.set(1.55, 1.1, 1.4); q.add(h); }
+    const tp = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.07, 0.2), lit); tp.position.y = -0.5; q.add(tp); return q;
+  };
+  p.armR = limb(0.62, body, 0.07, 2.66, 0); p.foreR = limb(0.6, p.armR, 0, -0.62, 0); p.pistR = pistol(p.foreR);
+  p.armL = limb(0.62, body, -0.07, 2.66, 0); p.foreL = limb(0.6, p.armL, 0, -0.62, 0); p.pistL = pistol(p.foreL);
+  p.rec = [0, 0]; p.hand = 0;
   p.orb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8), lit); p.orb.position.set(0, 2.35, 0.1); body.add(p.orb);               // göğüsteki renk noktası: ult doldukça büyür
   if (id !== 0) { p.label = makeLabel(p.name, hex(col)); p.label.position.y = 4.2; p.label.scale.set(4.5, 1.1, 1); g.add(p.label); }
   p.mesh = g; g.visible = id === 0; scene.add(g);
@@ -578,6 +579,71 @@ const creepPool = new Pool(CFG.pools.creeps, () => {
   g.visible = false; scene.add(g);
   return { mesh: g, model, body, hull, visor, hornL, hornR, crown, bar, active: false };
 });
+/* Yaratıklar renkli piksellerden (küplerden) oluşur: tek bir InstancedMesh, her kare yeniden yazılır.
+   Sahnedeki tek renk onlardır. Doğarken pikseller toplanır, ölünce her piksel kendi rengiyle saçılır. */
+const PAL = [0xff2d55, 0xff9500, 0xffd60a, 0x30d158, 0x00c7be, 0x40c8ff, 0x5e5ce6, 0xbf5af2, 0xff375f].map(h => new THREE.Color(h));
+const PAT_SRC = {
+  grunt:  ['.#...#.', '..###..', '.#####.', '##.#.##', '#######', '.#.#.#.'],
+  runner: ['..#..', '.###.', '#.#.#', '#####', '.#.#.', '#...#'],
+  tank:   ['.######.', '########', '##.##.##', '########', '########', '.##..##.', '##....##'],
+  boss:   ['#..####..#', '##.####.##', '.########.', '##.####.##', '##########', '#.######.#', '##########', '.##.##.##.', '##..##..##'],
+};
+const PAT = {}; let PATMAX = 0;
+for (const k in PAT_SRC) { const rows = PAT_SRC[k], cells = []; rows.forEach((r, gy) => { for (let gx = 0; gx < r.length; gx++) if (r[gx] === '#') for (let gz = 0; gz < 2; gz++) cells.push([gx, gy, gz]); }); PAT[k] = { cells, w: rows[0].length, h: rows.length }; PATMAX = Math.max(PATMAX, cells.length); }
+const VOXMAX = 9000, PIXMAX = 4500, PIX = [];
+const voxMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), VOXMAX), pixMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), PIXMAX);
+for (const m of [voxMesh, pixMesh]) { m.frustumCulled = false; m.setColorAt(0, PAL[0]); m.count = 0; scene.add(m); } voxMesh.castShadow = true;
+function voxInit(c) {
+  const P = PAT[c.type], vs = c.vsz = c.radius * 2 / P.w, base = Math.random() * PAL.length | 0, boss = c.type === 'boss';
+  if (!c.vc) { c.vc = new Float32Array(PATMAX * 3); c.vs = new Float32Array(PATMAX * 3); }
+  for (let i = 0; i < P.cells.length; i++) {
+    const col = PAL[(boss ? P.cells[i][1] + P.cells[i][0] : base + (Math.random() < 0.68 ? 0 : 1 + (Math.random() * 2 | 0))) % PAL.length], k = rand(0.82, 1.08);
+    c.vc[i * 3] = Math.min(1, col.r * k); c.vc[i * 3 + 1] = Math.min(1, col.g * k); c.vc[i * 3 + 2] = Math.min(1, col.b * k);
+    c.vs[i * 3] = rand(-6, 6); c.vs[i * 3 + 1] = rand(-1, 7); c.vs[i * 3 + 2] = rand(-10, -2);
+  }
+  c.by = P.h * vs / 2; c.h = P.h * vs + 1; c.bar.position.y = c.h; c.model.visible = false;
+}
+function voxPos(c, i, out, ek) {          // i. pikselin dünya konumu
+  const P = PAT[c.type], q = P.cells[i], vs = c.vsz, inv = 1 - ek, pu = 1 + c.punch * 0.22;
+  let lx = (q[0] - (P.w - 1) / 2) * vs * pu + c.vs[i * 3] * inv; if (q[1] >= P.h - 2) lx += (q[0] < P.w / 2 ? 1 : -1) * Math.sin(c.ph) * vs * 0.3;
+  const lz = (q[2] - 0.5) * vs + c.vs[i * 3 + 2] * inv;
+  out[0] = c.x + c.uz * lx + c.ux * lz; out[1] = (P.h - 1 - q[1] + 0.5) * vs * (1 - c.punch * 0.18) + (c.stunT > 0 ? 0 : Math.abs(Math.sin(c.ph)) * 0.25) + c.vs[i * 3 + 1] * inv; out[2] = c.z - c.ux * lx + c.uz * lz;
+}
+const _vp = [0, 0, 0];
+function renderVoxels() {
+  const M = voxMesh.instanceMatrix.array, C = voxMesh.instanceColor.array; let n = 0;
+  for (const c of G.creeps) {
+    if (!c.active || c.lane !== 0) continue;
+    const cells = PAT[c.type].cells, ek = 1 - (1 - c.born) * (1 - c.born), s = c.vsz * 0.94 * (0.3 + 0.7 * ek), cs = c.uz, sn = c.ux, fl = c.flash > 0;
+    for (let i = 0; i < cells.length && n < VOXMAX; i++, n++) {
+      voxPos(c, i, _vp, ek); const o = n * 16, j = n * 3;
+      M[o] = s * cs; M[o + 1] = 0; M[o + 2] = -s * sn; M[o + 3] = 0; M[o + 4] = 0; M[o + 5] = s; M[o + 6] = 0; M[o + 7] = 0; M[o + 8] = s * sn; M[o + 9] = 0; M[o + 10] = s * cs; M[o + 11] = 0; M[o + 12] = _vp[0]; M[o + 13] = _vp[1]; M[o + 14] = _vp[2]; M[o + 15] = 1;
+      if (fl) C[j] = C[j + 1] = C[j + 2] = 1; else { C[j] = c.vc[i * 3]; C[j + 1] = c.vc[i * 3 + 1]; C[j + 2] = c.vc[i * 3 + 2]; }
+    }
+  }
+  voxMesh.count = n; voxMesh.instanceMatrix.needsUpdate = true; voxMesh.instanceColor.needsUpdate = true;
+}
+function pushPix(x, y, z, vx, vy, vz, size, r, g, b, life) { if (PIX.length < PIXMAX) PIX.push({ x, y, z, vx, vy, vz, size, r, g, b, life, t: 0 }); }
+function burstCreep(c) {                   // ölüm: her piksel kendi rengiyle saçılır
+  if (FXOFF) return; const cells = PAT[c.type].cells, pw = c.type === 'boss' ? 1.7 : 1;
+  for (let i = 0; i < cells.length; i++) {
+    voxPos(c, i, _vp, 1); const dx = _vp[0] - c.x, dy = _vp[1] - c.by, dz = _vp[2] - c.z;
+    pushPix(_vp[0], _vp[1], _vp[2], (dx * rand(2, 6) - c.ux * rand(2, 7) + rand(-2, 2)) * pw, (rand(4, 11) + dy * 2) * pw, (dz * rand(2, 6) - c.uz * rand(2, 7) + rand(-2, 2)) * pw, c.vsz, c.vc[i * 3], c.vc[i * 3 + 1], c.vc[i * 3 + 2], rand(0.9, 1.9));
+  }
+}
+function hitPix(c, n) {                    // isabet: birkaç piksel kopar
+  if (FXOFF || !c.vc) return; const cells = PAT[c.type].cells;
+  for (let k = 0; k < n; k++) { const i = Math.random() * cells.length | 0; voxPos(c, i, _vp, 1); pushPix(_vp[0], _vp[1], _vp[2], rand(-5, 5) - c.ux * 4, rand(3, 8), rand(-5, 5) - c.uz * 4, c.vsz * 0.7, c.vc[i * 3], c.vc[i * 3 + 1], c.vc[i * 3 + 2], rand(0.4, 0.8)); }
+}
+function updatePixels(dt) {
+  const M = pixMesh.instanceMatrix.array, C = pixMesh.instanceColor.array; let n = 0;
+  for (let i = PIX.length - 1; i >= 0; i--) {
+    const q = PIX[i]; q.t += dt; if (q.t >= q.life) { PIX[i] = PIX[PIX.length - 1]; PIX.pop(); continue; }
+    q.vy -= 26 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; if (q.y < q.size / 2) { q.y = q.size / 2; q.vy *= -0.42; q.vx *= 0.62; q.vz *= 0.62; }
+  }
+  for (const q of PIX) { const o = n * 16, j = n * 3, s = q.size * Math.min(1, (q.life - q.t) / 0.3); M.fill(0, o, o + 16); M[o] = M[o + 5] = M[o + 10] = s; M[o + 12] = q.x; M[o + 13] = q.y; M[o + 14] = q.z; M[o + 15] = 1; C[j] = q.r; C[j + 1] = q.g; C[j + 2] = q.b; n++; }
+  pixMesh.count = n; pixMesh.instanceMatrix.needsUpdate = true; pixMesh.instanceColor.needsUpdate = true;
+}
 function spawnCreep(lane, type) {
   const c = creepPool.get(); if (!c) return;
   const T = CREEPS[type], d = laneDir(lane), A = CFG.arena, boss = type === 'boss', side = Math.random() < 0.5 ? -1 : 1;
@@ -597,6 +663,7 @@ function spawnCreep(lane, type) {
   if (horns) { c.hornL.scale.setScalar(s); c.hornR.scale.setScalar(s); c.hornL.position.set(-0.4 * s, by + 0.85 * s, 0); c.hornR.position.set(0.4 * s, by + 0.85 * s, 0); c.hornL.rotation.z = 0.35; c.hornR.rotation.z = -0.35; }
   if (boss) { c.crown.scale.setScalar(s * 0.9); c.crown.position.y = by + 1.5 * s; }
   c.bar.position.y = c.h; c.bar.visible = false; c.barW = boss ? 4 : 1.6; c.bar.scale.set(c.barW, boss ? 2 : 1, 1);
+  voxInit(c);
   c.mesh.position.set(c.x, 0, c.z); c.model.rotation.y = Math.atan2(c.ux, c.uz); c.model.scale.setScalar(0.01); c.mesh.visible = lane === 0;
   G.creeps.push(c);
   if (lane === 0) {                                           // yırtılma efekti: kara delikten şimşek, ışık sütunu, çerçeve ışıkları parlar
@@ -650,15 +717,9 @@ function spawnSplat(x, z, r) {            // ölen yaratığın yerde bıraktı�
   }
 }
 const debrisPool = new Pool(CFG.pools.debris, () => { const m = new THREE.Mesh(GEO.debris, DEBMAT[0]); m.visible = false; scene.add(m); return { mesh: m }; });
-function spawnDebris(x, y, z, n, power, eyeColor, size) {
+function spawnDebris(x, y, z, n, power, eyeColor, size) {       // renksiz kırıntı: gri pikseller
   if (FXOFF) return;
-  for (let i = 0; i < n; i++) {
-    const d = debrisPool.get(); if (!d) return;
-    const a = Math.random() * TAU, s = rand(0.3, 1) * power;
-    d.x = x; d.y = y; d.z = z; d.vx = Math.cos(a) * s; d.vz = Math.sin(a) * s; d.vy = rand(3, 9) * (power / 7); d.life = rand(0.45, 0.9); d.t = 0; d.spin = 12;
-    const k = Math.random(); d.mesh.geometry = GEO.debris; d.mesh.material = k < 0.5 ? DEBMAT[0] : k < 0.82 ? DEBMAT[1] : DEBMAT[2];
-    d.mesh.scale.setScalar((size || 1) * rand(0.6, 1.3)); d.mesh.visible = true; G.debris.push(d);
-  }
+  for (let i = 0; i < n; i++) { const a = Math.random() * TAU, sp = rand(0.3, 1) * power, g = rand(0.15, 1); pushPix(x, y, z, Math.cos(a) * sp, rand(3, 9) * (power / 7), Math.sin(a) * sp, 0.3 * (size || 1), g, g, g, rand(0.45, 0.9)); }
 }
 /* Parçalanma: gövde iri parçalara ayrılır, boynuz/vizör kopup savrulur; vuruş yönünde (kapıdan uzağa) fırlar. */
 function spawnGibs(c, n) {
@@ -725,8 +786,8 @@ const FEEL = {
   flash() { const e = $('flash'); e.className = ''; void e.offsetWidth; e.className = 'on'; },
   marker(cls) { const e = $('hm'); e.className = ''; void e.offsetWidth; e.className = 'on ' + (cls || ''); },
   hit(c, crit) {
-    SFX.hit(); this.marker(crit ? 'crit' : ''); spawnDebris(c.x, c.by, c.z, 2, 5, 0, 0.45);
-    if (crit) { SFX.crit(); this.shake(CFG.feel.trauma.crit); spawnDebris(c.x, c.by, c.z, 6, 8, 0, 0.7); spawnRing(c.x, c.z, 2.6, 0xffd23a, 0.25); }
+    SFX.hit(); this.marker(crit ? 'crit' : ''); hitPix(c, 2);
+    if (crit) { SFX.crit(); this.shake(CFG.feel.trauma.crit); hitPix(c, 7); spawnRing(c.x, c.z, 2.6, 0xffd23a, 0.25); }
   },
   kill(c) {
     const T = CFG.feel.trauma, boss = c.type === 'boss';
@@ -734,7 +795,7 @@ const FEEL = {
     SFX.kill(this.streak); this.marker('kill'); this.shake(boss ? T.boss : T.kill);
     if (boss) { this.stop(0.3); this.flash(); SFX.bossDie(); banner('BOSS YIKILDI!', '#ffd76a'); } else if (c.type === 'tank') this.stop(0.05);
     const s = $('streak');
-    const ST = CFG.stance, tr = this.streak >= ST.tiers[2] ? 3 : this.streak >= ST.tiers[1] ? 2 : this.streak >= ST.tiers[0] ? 1 : 0; s.lastElementChild.textContent = ST.names[tr];
+    s.lastElementChild.textContent = POSES[poseIndex(this.streak)].name;
     if (this.streak >= 3) { s.firstElementChild.textContent = 'x' + this.streak; s.style.opacity = 1; s.style.transform = 'scale(' + Math.min(1.6, 1 + this.streak * 0.02) + ')'; s.className = ''; void s.offsetWidth; s.className = 'bump'; }
   },
   update(dt) {
@@ -777,8 +838,7 @@ function killCreep(owner, c) {
   const boss = c.type === 'boss', me = owner === G.human;
   removeCreep(c); owner.kills++;
   const U = CFG.ult; owner.ult = Math.min(U.need, owner.ult + U.perKill * c.T.ult * owner.stats.ult * (me ? 1 + Math.min(FEEL.streak, U.streakCap) * U.streakBonus : 1));
-  spawnGibs(c, boss ? 22 : c.type === 'tank' ? 9 : 6); spawnSplat(c.x, c.z, c.radius * (boss ? 1.5 : 1.1));
-  spawnDebris(c.x, c.by, c.z, boss ? 46 : c.type === 'tank' ? 16 : 10, boss ? 17 : 9, c.T.eye, boss ? 2 : 0.9);
+  burstCreep(c); spawnSplat(c.x, c.z, c.radius * (boss ? 1.5 : 1.1));
   spawnBeam(c.x, 0.2, c.z, c.x, boss ? 15 : 6.5, c.z, c.T.eye, boss ? 1.4 : 0.4); spawnRing(c.x, c.z, c.radius * (boss ? 9 : 4.6), c.T.eye, boss ? 0.9 : 0.42);
   spawnFx(c.x, c.by, c.z, c.radius * (boss ? 4 : 2.4), c.T.eye, boss ? 0.6 : 0.22);
   spawnRing(c.x, c.z, c.radius * (boss ? 6 : 3), 0xffffff, boss ? 0.7 : 0.3);
@@ -846,7 +906,8 @@ function fireHero(p, tgt) {
   const dmg = core.dmg * p.stats.dmg * dmgMult(p) * (m.extra ? (n0 + m.extra * m.extraEff) / n : 1);
   let dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1;
   p.faceYaw = Math.atan2(dx, dz); p.faceT = 0.5; p.recoil = 1;
-  const mx = p.x + Math.sin(p.faceYaw) * 2.3 - Math.cos(p.faceYaw) * 0.33, mz = p.z + Math.cos(p.faceYaw) * 2.3 + Math.sin(p.faceYaw) * 0.33;
+  p.hand ^= 1; p.rec[p.hand] = 1; const sd = p.hand ? 0.38 : -0.38;                    // eller sırayla ateş eder
+  const mx = p.x + Math.sin(p.faceYaw) * 1.9 + Math.cos(p.faceYaw) * sd, mz = p.z + Math.cos(p.faceYaw) * 1.9 - Math.sin(p.faceYaw) * sd;
   spawnFx(mx, 2.6, mz, core.kind === 'beam' ? 0.5 : 1.0, col, 0.07);          // namlu parlaması
   if (me) { SFX.shoot(core.kind, el); FEEL.shake(CFG.feel.trauma.shot * (core.kind === 'beam' ? 0.3 : core.aoe || core.pellets ? 2 : 1)); FEEL.kick += core.kind === 'beam' ? 0.05 : core.aoe || core.pellets ? 0.45 : 0.22; }
   if (core.kind === 'proj') {
@@ -958,14 +1019,14 @@ function updateCreeps(dt) {
 function leak(c) {
   const mine = c.lane === 0, owner = G.players[c.lane], L = LANES[c.lane];
   owner.core = Math.max(0, owner.core - c.T.leak); G.roundLeaks[c.lane]++; owner.leaks++;
-  spawnFx(L.cx, 5, L.cz, 8, 0xff3030, 0.5); spawnRing(L.cx, L.cz, 11, 0xff3030, 0.6); L.flash = 0.4; removeCreep(c);
+  spawnFx(L.cx, 5, L.cz, 8, 0x111111, 0.5); spawnRing(L.cx, L.cz, 11, 0x111111, 0.6); L.flash = 0.4; removeCreep(c);
   if (mine) { FEEL.shake(CFG.feel.trauma.leak); SFX.leak(); vignette(0.9); FEEL.streak = 0; FEEL.streakT = 0; $('streak').style.opacity = 0; if (G.roundLeaks[0] === 1) feed('<b style="color:#ff6a5a">Sızıntı!</b> Çekirdeğin hasar aldı.'); }
   if (owner.core <= 0) eliminate(owner);
 }
 /* Çekirdeği düşen savunucu elenir: adası söner, dalgası durur. İnsan oyuncuysa oyun biter. */
 function eliminate(p) {
   if (!p.alive) return; p.alive = false; p.outRound = G.round;
-  if (p === G.human) { const L = LANES[0]; SC.core.visible = SC.ring.visible = SC.beam.visible = SC.veil.visible = false; SC.light.intensity = 0; FXOFF = false; spawnDebris(L.cx, 5, L.cz, 60, 16, 0, 2); spawnFx(L.cx, 5, L.cz, 16, 0xff3030, 0.8); spawnRing(L.cx, L.cz, 22, 0xff3030, 0.9); return; }
+  if (p === G.human) { const L = LANES[0]; SC.core.visible = SC.ring.visible = SC.beam.visible = SC.veil.visible = false; SC.light.intensity = 0; FXOFF = false; spawnDebris(L.cx, 5, L.cz, 60, 16, 0, 2); spawnFx(L.cx, 5, L.cz, 16, 0x111111, 0.8); spawnRing(L.cx, L.cz, 22, 0x111111, 0.9); return; }
   p.mesh.visible = false; for (const c of G.creeps) if (c.lane === p.edge) removeCreep(c);
   G.spawnQ = G.spawnQ.filter(s => s.lane !== p.edge);
   feed('<b style="color:#ff6a5a">' + ELEMENTS[p.el].icon + ' ' + p.name + ' elendi</b> — çekirdeği düştü (tur ' + G.round + ').');
@@ -1063,30 +1124,41 @@ function updateHuman(p, dt) {
   if (p.faceT <= 0) p.faceYaw = laneAng(p.edge);
 }
 const lerp = (a, b, k) => a + (b - a) * k;
+/* Şov nişancısı duruşları. kn: diz çökme · wd: bacak açıklığı · yaw: gövde dönüşü · lean: geriye yay ·
+   R/L: [kolu öne kaldırma (−1.5 = yatay ileri), yana açma] · look: baş dönüşü */
+const POSES = [
+  { name: 'HAZIR',     kn: 0, wd: 0,   yaw: 0,     lean: 0,     R: [-1.5, -0.1],  L: [-1.5, 0.1],   look: 0 },
+  { name: 'DİZ ÇÖK',   kn: 1, wd: 0,   yaw: 0,     lean: 0.05,  R: [-1.5, -0.1],  L: [-1.5, 0.1],   look: 0 },
+  { name: 'AKİMBO',    kn: 0, wd: 1,   yaw: 0,     lean: 0.08,  R: [-1.45, 0.5],  L: [-1.45, -0.5], look: 0 },
+  { name: 'YAN DURUŞ', kn: 0, wd: 0.4, yaw: -1.57, lean: 0,     R: [0, 1.52],     L: [-3.0, -0.1],  look: 1.3 },
+  { name: 'ŞOV',       kn: 1, wd: 0,   yaw: 0,     lean: 0,     R: [-1.5, -0.1],  L: [-2.95, -0.2], look: 0 },
+  { name: 'SIRTTAN',   kn: 0, wd: 0.5, yaw: 3.14,  lean: 0.1,   R: [1.5, 0.14],   L: [1.5, -0.14],  look: 0 },
+  { name: 'ÇAPRAZ',    kn: 0, wd: 1,   yaw: 0,     lean: 0,     R: [-1.5, -0.6],  L: [-1.5, 0.6],   look: 0 },
+  { name: 'GERİ YAY',  kn: 0, wd: 0.6, yaw: 0,     lean: -0.45, R: [-1.25, 0.22], L: [-1.25, -0.22], look: 0 },
+];
+const poseIndex = st => st >= CFG.stance.every ? Math.floor(st / CFG.stance.every) % POSES.length : 0;
 function updateHeroCommon(p, dt) {
   if (p.faceT > 0) p.faceT -= dt;
-  p.recoil = Math.max(0, p.recoil - dt * 9);
-  p.walk += dt * (p.moving ? 10 : 0);
-  const sw = p.moving ? Math.sin(p.walk) : 0, e = Math.min(1, dt * 8), t = G.time;
-  // duruş: insan oyuncuda seri kademesi belirler (0 ayakta · 1 diz çökmüş · 2 geniş duruş · 3 diz çökmüş + sol kol havada)
-  let tier = 0;
-  if (p === G.human) { const T = CFG.stance.tiers, st = FEEL.streak; tier = st >= T[2] ? 3 : st >= T[1] ? 2 : st >= T[0] ? 1 : 0; }
-  if (tier !== p.tier) { if (tier > (p.tier || 0)) p.flour = 1; p.tier = tier; p.flT = 0; }
-  if (tier === 3 && (p.flT = (p.flT || 0) + dt) > CFG.stance.flourishEvery) { p.flour = 1; p.flT = 0; }
-  p.kn = lerp(p.kn || 0, tier === 1 || tier === 3 ? 1 : 0, e); p.wd = lerp(p.wd || 0, tier === 2 ? 1 : 0, e); p.up = lerp(p.up || 0, tier === 3 ? 1 : 0, e);
-  p.flour = Math.max(0, (p.flour || 0) - dt * 1.9); p.pump = Math.max(0, (p.pump || 0) - dt * 5);
-  const kn = p.kn, wd = p.wd, fl = p.flour, air = fl > 0 ? Math.sin((1 - fl) * Math.PI) : 0;        // geçişte zıpla + kendi etrafında dön
-  const drop = kn * 0.66 + wd * 0.16 + p.pump * 0.22 * (1 - kn) - air * 0.1;
-  p.legs[0].rotation.x = lerp(sw * 0.65, -1.35, kn) - air * 0.5; p.shins[0].rotation.x = lerp(Math.max(0, -sw) * 0.9, 1.45, kn) + air * 1.0 + p.pump * 0.3 * (1 - kn);
-  p.legs[1].rotation.x = lerp(-sw * 0.65, 0.26, kn) + air * 0.2; p.shins[1].rotation.x = lerp(Math.max(0, sw) * 0.9, 1.4, kn) + air * 1.2 + p.pump * 0.3 * (1 - kn);
-  for (let i = 0; i < 2; i++) { const s = i ? 1 : -1; p.legs[i].rotation.z = s * (0.07 + wd * 0.34 + p.pump * 0.1); p.legs[i].position.y = 1.6 - drop; }
-  p.body.position.y = -drop + Math.sin(t * 2 + p.id) * 0.03; p.body.rotation.x = -p.recoil * 0.1 + wd * 0.14 + kn * 0.06; p.body.rotation.y = sw * 0.06 + wd * Math.sin(t * 6) * 0.05;
-  p.armL.rotation.x = lerp(-0.95 - p.recoil * 0.06, -2.9 + Math.sin(t * 9) * 0.12, p.up); p.armL.rotation.z = lerp(0.3, -0.35, p.up);
-  p.head.rotation.y = Math.sin(t * 0.9 + p.id) * (tier ? 0.06 : 0.2); p.head.rotation.x = -p.up * 0.25;
-  p.gun.position.z = -p.recoil * 0.16; p.gun.rotation.x = -p.recoil * 0.1 - wd * 0.08;
+  p.rec[0] = Math.max(0, p.rec[0] - dt * 9); p.rec[1] = Math.max(0, p.rec[1] - dt * 9);
+  const e = Math.min(1, dt * 9), t = G.time, pi = p === G.human ? poseIndex(FEEL.streak) : 0;
+  if (pi !== p.pi) { if (p.pi != null) p.flour = 1; p.pi = pi; }                                       // duruş değişimi: zıpla, dön, tabancaları çevir
+  const P = POSES[pi], c = p.cur || (p.cur = { kn: 0, wd: 0, yaw: 0, lean: 0, rx: -1.5, rz: -0.1, lx: -1.5, lz: 0.1, look: 0 });
+  c.kn = lerp(c.kn, P.kn, e); c.wd = lerp(c.wd, P.wd, e); c.yaw = lerp(c.yaw, P.yaw, e); c.lean = lerp(c.lean, P.lean, e); c.look = lerp(c.look, P.look, e);
+  c.rx = lerp(c.rx, P.R[0], e); c.rz = lerp(c.rz, P.R[1], e); c.lx = lerp(c.lx, P.L[0], e); c.lz = lerp(c.lz, P.L[1], e);
+  p.flour = Math.max(0, (p.flour || 0) - dt * 2); p.pump = Math.max(0, (p.pump || 0) - dt * 5);
+  const kn = c.kn, wd = c.wd, fl = p.flour, air = fl > 0 ? Math.sin((1 - fl) * Math.PI) : 0;
+  const drop = kn * 0.66 + wd * 0.16 + p.pump * 0.2 * (1 - kn) - air * 0.1;
+  p.legs[0].rotation.x = lerp(0, -1.35, kn) - air * 0.5; p.shins[0].rotation.x = lerp(0, 1.45, kn) + air * 1.0 + p.pump * 0.3 * (1 - kn);
+  p.legs[1].rotation.x = lerp(0, 0.26, kn) + air * 0.2; p.shins[1].rotation.x = lerp(0, 1.4, kn) + air * 1.2 + p.pump * 0.3 * (1 - kn);
+  for (let i = 0; i < 2; i++) { p.legs[i].rotation.z = (i ? 1 : -1) * (0.07 + wd * 0.34 + p.pump * 0.1); p.legs[i].position.y = 1.6 - drop; }
+  p.body.position.y = -drop + Math.sin(t * 2 + p.id) * 0.03; p.body.rotation.x = c.lean - (p.rec[0] + p.rec[1]) * 0.03;
+  p.armR.rotation.set(c.rx - p.rec[1] * 0.42, 0, c.rz); p.armL.rotation.set(c.lx - p.rec[0] * 0.42, 0, c.lz);      // geri tepme kolu yukarı savurur
+  p.foreR.rotation.x = -0.05 - p.rec[1] * 0.35; p.foreL.rotation.x = -0.05 - p.rec[0] * 0.35;
+  p.pistR.rotation.x = fl > 0 ? (1 - fl) * TAU * 2 : 0; p.pistL.rotation.x = fl > 0 ? -(1 - fl) * TAU * 2 : 0;
+  p.head.rotation.y = c.look + Math.sin(t * 0.9 + p.id) * 0.06; p.head.rotation.x = -c.lean * 0.6;
   p.orb.scale.setScalar(p.ult >= CFG.ult.need ? 1.8 + Math.sin(t * 10) * 0.3 : 0.6 + p.ult / 100 * 0.7);
   let dy = p.faceYaw - (p.yaw == null ? p.faceYaw : p.yaw); dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.yaw = (p.yaw == null ? p.faceYaw : p.yaw) + dy * Math.min(1, dt * 18);
-  p.mesh.rotation.y = p.yaw + (fl > 0 ? (1 - fl) * TAU : 0);
+  p.mesh.rotation.y = p.yaw + c.yaw + (fl > 0 ? (1 - fl) * TAU : 0);
   p.mesh.position.set(p.x, air * 1.5, p.z);
 }
 function updateFx(dt) {
@@ -1123,10 +1195,10 @@ function updateScenery(dt) {
   S.pr1.rotation.z += dt * 1.6; S.pr2.rotation.z += dt * 0.9; S.pr3.rotation.z -= dt * (0.5 + fmax * 5);
   S.core.rotation.y += dt * 0.8; S.core.position.y = 4.8 + Math.sin(t * 1.5) * 0.3; S.ring.rotation.x += dt * 1.1; S.ring.rotation.y += dt * 0.6;
   if (L.flash > 0) L.flash -= dt;
-  const col = L.flash > 0 || (alarm && Math.sin(t * 8) > 0) ? 0xff3a3a : S.col;
+  const col = L.flash > 0 || (alarm && Math.sin(t * 8) > 0) ? 0x111111 : S.col;
   S.core.material.emissive.setHex(col); S.core.material.color.setHex(col); S.beam.material.color.setHex(col);
   S.light.color.setHex(col === S.col ? 0xffffff : col); S.light.intensity = 0.6 + Math.sin(t * 3) * 0.1 + (L.flash > 0 ? 1.5 : 0);
-  for (let k = 0; k < S.ribMats.length; k++) S.ribMats[k].color.setHex(alarm ? 0xff2a1a : 0xffffff).multiplyScalar(0.45 + 0.55 * Math.max(0, Math.sin(t * 3.2 + k * 0.75)));   // ışık dalgası geçide doğru akar; düşük canda kırmızı alarm
+  for (let k = 0; k < S.ribMats.length; k++) S.ribMats[k].color.setHex(alarm ? 0x111111 : 0xffffff).multiplyScalar(0.45 + 0.55 * Math.max(0, Math.sin(t * 3.2 + k * 0.75)));   // ışık dalgası geçide doğru akar; düşük canda kırmızı alarm
   for (const f of S.fans) f.rotation.x += dt * 7;
   for (const q of S.pulses) { const u = (t * q.sp + q.off) % S.len; q.m.position.z = q.dir > 0 ? S.a0 + u : S.a1 - u; }
   S.starTex.offset.x = t * 0.012; S.dataTex.offset.y = t * 0.22;
@@ -1320,7 +1392,7 @@ function update(dt) {
   if (G.state === 'wave') { G.waveT += dt; while (G.spawnQ.length && G.spawnQ[G.spawnQ.length - 1].t <= G.waveT) { const s = G.spawnQ.pop(); spawnCreep(s.lane, s.type); } }
   for (const p of G.players) { if (!p.alive) continue; FXOFF = p.id !== 0; if (p.isBot) updateBot(p, dt); else updateHuman(p, dt); updateHeroCommon(p, dt); }
   Input.actions.length = 0;
-  updateProjectiles(dt); updateCreeps(dt); FXOFF = false; updateFx(dt); updateScenery(dt);
+  updateProjectiles(dt); updateCreeps(dt); FXOFF = false; renderVoxels(); updatePixels(dt); updateFx(dt); updateScenery(dt);
   if (!G.human.alive) return endGame(false);
   if (G.state === 'wave' && !G.spawnQ.length && !G.creeps.length) endRound();
 }
