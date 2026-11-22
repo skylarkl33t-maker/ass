@@ -17,6 +17,8 @@
   .panel{background:rgba(8,8,9,.55);border:1px solid var(--line);backdrop-filter:blur(10px) saturate(0);-webkit-backdrop-filter:blur(10px) saturate(0);padding:12px 16px}
   #fxv{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.55),transparent 16%,transparent 78%,rgba(0,0,0,.72)),radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.5) 100%)}
   #vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 50%,rgba(255,255,255,.4) 100%);opacity:0;transition:opacity .25s}
+  #flash{position:absolute;inset:0;background:#fff;opacity:0}#flash.on{animation:flash .22s ease-out}
+  @keyframes flash{from{opacity:.75}to{opacity:0}}
   #top{position:absolute;top:20px;left:50%;transform:translateX(-50%);width:min(420px,60vw);text-align:center;background:none;border:0;backdrop-filter:none;-webkit-backdrop-filter:none;padding:0}
   #roundTxt{font-size:10px;letter-spacing:.3em;color:var(--g1);text-transform:uppercase}
   #coreBar{position:relative;height:2px;margin:10px 0 0;background:rgba(255,255,255,.16)}
@@ -122,6 +124,7 @@
 <div id="hud">
   <div id="fxv"></div>
   <div id="vig"></div>
+  <div id="flash"></div>
   <div id="top" class="panel"><div id="roundTxt">—</div><div id="coreBar"><i></i><span></span></div><div id="chainTxt"></div></div>
   <div id="board" class="panel"></div>
   <canvas id="mini" width="170" height="170"></canvas>
@@ -178,10 +181,11 @@ const CFG = {
   flawless:{ dmgPerChain: 0.08, maxChain: 5, extraCards: 1 },
   bot:     { dmgBonus: 1.35, wander: 5 },
 
+  stance:  { tiers: [6, 14, 24], names: ['SERİ', 'ODAK · DİZ ÇÖK', 'ÖFKE · AYAKTA', 'TRANS'], flourishEvery: 2.8 },   // seri eşikleri → duruş
   feel:    { streakWindow: 2.6, shakeMax: 0.9, shakeDecay: 2.2, hitstopScale: 0.05, kickDecay: 9,
              streakShake: { from: 5, cap: 30, floor: 0.24, bonus: 1.1 },   // seri büyüdükçe sürekli titreşim (tavanlı)
              trauma: { shot: 0.035, crit: 0.14, kill: 0.1, combo: 0.26, ult: 0.9, leak: 0.7, boss: 1 } },
-  pools:   { creeps: 320, proj: 380, fx: 110, rings: 48, beams: 72, debris: 460, popups: 44 },
+  pools:   { creeps: 320, proj: 380, fx: 110, rings: 48, beams: 72, debris: 460, splats: 70, popups: 44 },
 };
 
 /* Element = kimlik + doğuştan vuruş özelliği (trait). */
@@ -246,10 +250,10 @@ const PASSIVES = {
 const LVL = { coreDmg: 0.22, mod: 0.5, modSlow: 0.25 };
 
 const CREEPS = {
-  grunt:  { tier: 1, hp: 1,   speed: 1,    leak: 1,  radius: 0.9, ult: 1,  scale: 1,    kb: 1,    eye: 0xffffff },
-  runner: { tier: 0, hp: 0.6, speed: 1.6,  leak: 1,  radius: 0.8, ult: 1,  scale: 0.85, kb: 1.2,  eye: 0xd0d3d8 },
-  tank:   { tier: 2, hp: 2.6, speed: 0.7,  leak: 2,  radius: 1.25,ult: 2,  scale: 1.25, kb: 0.45, eye: 0xa4a8ae },
-  boss:   { tier: 3, hp: 12,  speed: 0.5,  leak: 15, radius: 3.0, ult: 14, scale: 3.2,  kb: 0.12, eye: 0xffffff },
+  grunt:  { tier: 1, hp: 1,   speed: 1,    leak: 1,  radius: 1.4, ult: 1,  scale: 1.6,  kb: 1,    eye: 0xffffff },
+  runner: { tier: 0, hp: 0.6, speed: 1.6,  leak: 1,  radius: 1.2, ult: 1,  scale: 1.35, kb: 1.2,  eye: 0xd0d3d8 },
+  tank:   { tier: 2, hp: 2.6, speed: 0.7,  leak: 2,  radius: 1.9,ult: 2,  scale: 2.0, kb: 0.45, eye: 0xa4a8ae },
+  boss:   { tier: 3, hp: 12,  speed: 0.5,  leak: 15, radius: 3.6, ult: 14, scale: 3.7,  kb: 0.12, eye: 0xffffff },
 };
 
 /* ------------------------------ yardımcılar ------------------------------ */
@@ -267,7 +271,7 @@ const AUTO = QS.has('auto');              // ?auto → insan oyuncuyu da bot oyn
 const G = {
   state: 'menu', round: 0, time: 0, stateT: 0, waveT: 0,
   roundLeaks: [0, 0, 0, 0, 0, 0], extraCard: false,
-  players: [], human: null, creeps: [], projs: [], fxs: [], rings: [], beams: [], debris: [],
+  players: [], human: null, creeps: [], projs: [], fxs: [], rings: [], beams: [], debris: [], splats: [],
   spawnQ: [], pressure: [0, 0, 0, 0, 0, 0], lock: true, bloom: false, hudPin: false, hudAuto: 0, speed: 1, roundHp: 30,
   stats: { combos: 0, flawless: 0, leaks: 0 },
 };
@@ -315,7 +319,7 @@ function initPost() {
 }
 
 const mat = (color, emissive, ei) => { const m = new THREE.MeshPhongMaterial({ color, emissive: emissive || 0x000000, flatShading: true, shininess: 25 }); if (ei != null) m.emissiveIntensity = ei; return m; };
-const glow = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: opacity == null ? 1 : opacity, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+const glow = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: opacity == null ? 1 : opacity, depthWrite: false, side: THREE.DoubleSide });
 const shadowed = m => { m.castShadow = true; return m; };
 
 const GEO = {
@@ -562,15 +566,17 @@ function clampZone(p) {
 }
 
 /* -------------------------------- yaratıklar ------------------------------ */
+const CHULL = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
 const creepPool = new Pool(CFG.pools.creeps, () => {
   const g = new THREE.Group(), model = new THREE.Group(); g.add(model);
   const body = shadowed(new THREE.Mesh(GEO.grunt, mat(0x202124, 0xffffff, 0))); model.add(body);
+  const hull = new THREE.Mesh(GEO.grunt, CHULL); hull.scale.setScalar(1.1); body.add(hull);          // beyaz kontur (ters kabuk)
   const visor = new THREE.Mesh(GEO.visor, new THREE.MeshBasicMaterial({ color: 0xffffff })); model.add(visor);
   const hornL = new THREE.Mesh(GEO.horn, body.material), hornR = new THREE.Mesh(GEO.horn, body.material); model.add(hornL); model.add(hornR);
   const crown = new THREE.Mesh(GEO.crown, new THREE.MeshBasicMaterial({ color: 0xffffff })); crown.rotation.x = Math.PI / 2; model.add(crown);
   const bar = new THREE.Mesh(GEO.bar, BARMAT); bar.renderOrder = 5; g.add(bar);
   g.visible = false; scene.add(g);
-  return { mesh: g, model, body, visor, hornL, hornR, crown, bar, active: false };
+  return { mesh: g, model, body, hull, visor, hornL, hornR, crown, bar, active: false };
 });
 function spawnCreep(lane, type) {
   const c = creepPool.get(); if (!c) return;
@@ -580,17 +586,17 @@ function spawnCreep(lane, type) {
   c.x = d[0] * R + d[1] * off; c.z = d[1] * R - d[0] * off; c.tx = d[0] * A.coreAl; c.tz = d[1] * A.coreAl;
   c.d = Math.hypot(c.tx - c.x, c.tz - c.z); c.ux = (c.tx - c.x) / c.d; c.uz = (c.tz - c.z) / c.d;
   c.maxHp = c.hp = G.roundHp * T.hp; c.speed = CFG.wave.speed * T.speed * rand(0.92, 1.08);
-  c.radius = T.radius; c.h = boss ? 8 : 2.6;
+  c.radius = T.radius;
   c.slowT = c.slowF = c.stunT = c.dotT = c.dotDps = c.vulnT = c.comboCd = c.popAcc = c.popNext = c.flash = c.punch = c.born = 0;
   c.markEl = null; c.markT = -9; c.dotOwner = null; c.popCrit = false; c.ph = rand(0, 6);
-  const s = T.scale, by = boss ? 3.9 : type === 'tank' ? 1.5 : 1.15;
-  c.body.geometry = GEO[type]; c.body.scale.setScalar(s); c.body.position.y = by; c.by = by;
+  const s = T.scale, by = s * 1.18; c.h = by + s * (boss ? 1.25 : 1.1) + 0.6;
+  c.body.geometry = c.hull.geometry = GEO[type]; c.body.scale.setScalar(s); c.body.position.y = by; c.by = by;
   c.body.material.color.setHex(boss ? 0x2b2b2f : type === 'tank' ? 0x35363b : 0x202124); c.body.material.emissive.setHex(0xffffff); c.body.material.emissiveIntensity = 0;
   c.visor.material.color.setHex(T.eye); c.visor.scale.setScalar(s); c.visor.position.set(0, by + 0.12 * s, 0.62 * s);
   const horns = type === 'grunt' || boss; c.hornL.visible = c.hornR.visible = horns; c.crown.visible = boss;
   if (horns) { c.hornL.scale.setScalar(s); c.hornR.scale.setScalar(s); c.hornL.position.set(-0.4 * s, by + 0.85 * s, 0); c.hornR.position.set(0.4 * s, by + 0.85 * s, 0); c.hornL.rotation.z = 0.35; c.hornR.rotation.z = -0.35; }
   if (boss) { c.crown.scale.setScalar(s * 0.9); c.crown.position.y = by + 1.5 * s; }
-  c.bar.position.y = c.h; c.bar.visible = false; c.barW = boss ? 4 : 1; c.bar.scale.set(c.barW, boss ? 2 : 1, 1);
+  c.bar.position.y = c.h; c.bar.visible = false; c.barW = boss ? 4 : 1.6; c.bar.scale.set(c.barW, boss ? 2 : 1, 1);
   c.mesh.position.set(c.x, 0, c.z); c.model.rotation.y = Math.atan2(c.ux, c.uz); c.model.scale.setScalar(0.01); c.mesh.visible = lane === 0;
   G.creeps.push(c);
   if (lane === 0) {                                           // yırtılma efekti: kara delikten şimşek, ışık sütunu, çerçeve ışıkları parlar
@@ -631,6 +637,17 @@ function spawnBeam(x1, y1, z1, x2, y2, z2, color, w) {
   b.t = 0.13; b.mesh.material.color.setHex(color); b.mesh.material.opacity = 1;
   b.mesh.position.set((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2); b.mesh.scale.set(w || 0.16, w || 0.16, len);
   b.mesh.lookAt(x2, y2, z2); b.mesh.visible = true; G.beams.push(b);
+}
+const SPLATG = new THREE.CircleGeometry(1, 9);
+const splatPool = new Pool(CFG.pools.splats, () => { const m = new THREE.Mesh(SPLATG, new THREE.MeshBasicMaterial({ color: 0x0b0b0b, transparent: true, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m); return { mesh: m }; });
+function spawnSplat(x, z, r) {            // ölen yaratığın yerde bıraktığı mürekkep izi: ana leke + sıçramalar
+  if (FXOFF) return;
+  for (let i = 0; i < 5; i++) {
+    const f = splatPool.get(); if (!f) return;
+    const a = Math.random() * TAU, d = i ? rand(0.6, 1.9) * r : 0, sc = i ? rand(0.12, 0.38) * r : r;
+    f.t = 0; f.life = rand(7, 11); f.mesh.position.set(x + Math.cos(a) * d, 0.03 + i * 0.002, z + Math.sin(a) * d); f.mesh.scale.set(sc * rand(0.7, 1.3), sc * rand(0.7, 1.3), 1); f.mesh.rotation.z = a;
+    f.mesh.material.opacity = 0.85; f.mesh.visible = true; G.splats.push(f);
+  }
 }
 const debrisPool = new Pool(CFG.pools.debris, () => { const m = new THREE.Mesh(GEO.debris, DEBMAT[0]); m.visible = false; scene.add(m); return { mesh: m }; });
 function spawnDebris(x, y, z, n, power, eyeColor, size) {
@@ -705,6 +722,7 @@ const FEEL = {
   hitstop: 0, trauma: 0, kick: 0, streak: 0, streakT: 0, best: 0,
   shake(v) { this.trauma = Math.min(1, this.trauma + v); },
   stop(t) { this.hitstop = Math.max(this.hitstop, t); },
+  flash() { const e = $('flash'); e.className = ''; void e.offsetWidth; e.className = 'on'; },
   marker(cls) { const e = $('hm'); e.className = ''; void e.offsetWidth; e.className = 'on ' + (cls || ''); },
   hit(c, crit) {
     SFX.hit(); this.marker(crit ? 'crit' : ''); spawnDebris(c.x, c.by, c.z, 2, 5, 0, 0.45);
@@ -714,8 +732,9 @@ const FEEL = {
     const T = CFG.feel.trauma, boss = c.type === 'boss';
     this.streak++; this.streakT = CFG.feel.streakWindow; if (this.streak > this.best) this.best = this.streak;
     SFX.kill(this.streak); this.marker('kill'); this.shake(boss ? T.boss : T.kill);
-    if (boss) { this.stop(0.3); SFX.bossDie(); banner('BOSS YIKILDI!', '#ffd76a'); } else if (c.type === 'tank') this.stop(0.05);
+    if (boss) { this.stop(0.3); this.flash(); SFX.bossDie(); banner('BOSS YIKILDI!', '#ffd76a'); } else if (c.type === 'tank') this.stop(0.05);
     const s = $('streak');
+    const ST = CFG.stance, tr = this.streak >= ST.tiers[2] ? 3 : this.streak >= ST.tiers[1] ? 2 : this.streak >= ST.tiers[0] ? 1 : 0; s.lastElementChild.textContent = ST.names[tr];
     if (this.streak >= 3) { s.firstElementChild.textContent = 'x' + this.streak; s.style.opacity = 1; s.style.transform = 'scale(' + Math.min(1.6, 1 + this.streak * 0.02) + ')'; s.className = ''; void s.offsetWidth; s.className = 'bump'; }
   },
   update(dt) {
@@ -758,7 +777,7 @@ function killCreep(owner, c) {
   const boss = c.type === 'boss', me = owner === G.human;
   removeCreep(c); owner.kills++;
   const U = CFG.ult; owner.ult = Math.min(U.need, owner.ult + U.perKill * c.T.ult * owner.stats.ult * (me ? 1 + Math.min(FEEL.streak, U.streakCap) * U.streakBonus : 1));
-  spawnGibs(c, boss ? 22 : c.type === 'tank' ? 9 : 6);
+  spawnGibs(c, boss ? 22 : c.type === 'tank' ? 9 : 6); spawnSplat(c.x, c.z, c.radius * (boss ? 1.5 : 1.1));
   spawnDebris(c.x, c.by, c.z, boss ? 46 : c.type === 'tank' ? 16 : 10, boss ? 17 : 9, c.T.eye, boss ? 2 : 0.9);
   spawnBeam(c.x, 0.2, c.z, c.x, boss ? 15 : 6.5, c.z, c.T.eye, boss ? 1.4 : 0.4); spawnRing(c.x, c.z, c.radius * (boss ? 9 : 4.6), c.T.eye, boss ? 0.9 : 0.42);
   spawnFx(c.x, c.by, c.z, c.radius * (boss ? 4 : 2.4), c.T.eye, boss ? 0.6 : 0.22);
@@ -802,7 +821,7 @@ function triggerCombo(owner, c, elA, elB, baseDmg) {
   const def = COMBOS[comboKey(elA, elB)]; if (!def) return;
   const dmg = baseDmg * def.mult * owner.stats.combo, colA = ELEMENTS[elA].color, colB = ELEMENTS[elB].color, me = owner === G.human;
   G.stats.combos++; owner.combos++;
-  if (me) { comboBanner(def.name + '!'); SFX.combo(); FEEL.shake(CFG.feel.trauma.combo); FEEL.stop(0.045); FEEL.kick += 0.6; }
+  if (me) { comboBanner(def.name + '!'); G.human.pump = 1; SFX.combo(); FEEL.shake(CFG.feel.trauma.combo); FEEL.stop(0.045); FEEL.kick += 0.6; }
   spawnFx(c.x, 1.6, c.z, def.aoe || 3.5, colA, 0.45); spawnFx(c.x, 1.6, c.z, (def.aoe || 3.5) * 0.6, colB, 0.3); spawnRing(c.x, c.z, (def.aoe || 4) * 1.15, colB, 0.5);
   _victims.length = 0;
   if (def.aoe) { const r2 = def.aoe * def.aoe; for (const o of G.creeps) if (o.active && o !== c) { const dx = o.x - c.x, dz = o.z - c.z; if (dx * dx + dz * dz < r2) _victims.push(o); } }
@@ -957,7 +976,7 @@ function castUlt(p) {
   p.ult = 0; const U = CFG.ult, r2 = U.radius * U.radius, dmg = U.dmg * p.stats.dmg * dmgMult(p) * (1 + 0.15 * G.round), col = ELEMENTS[p.el].color;
   spawnFx(p.x, 1.5, p.z, U.radius, col, 0.7); spawnFx(p.x, 1.5, p.z, U.radius * 0.6, 0xffffff, 0.45);
   spawnRing(p.x, p.z, U.radius * 1.2, col, 0.7); spawnRing(p.x, p.z, U.radius * 0.8, 0xffffff, 0.5);
-  if (p === G.human) { FEEL.shake(CFG.feel.trauma.ult); FEEL.stop(0.14); FEEL.kick += 1.6; SFX.ult(); banner(ELEMENTS[p.el].name.toUpperCase() + ' NOVASI', hex(col)); }
+  if (p === G.human) { FEEL.shake(CFG.feel.trauma.ult); FEEL.flash(); FEEL.stop(0.14); FEEL.kick += 1.6; SFX.ult(); banner(ELEMENTS[p.el].name.toUpperCase() + ' NOVASI', hex(col)); }
   for (const c of G.creeps) if (c.active) { const dx = c.x - p.x, dz = c.z - p.z; if (dx * dx + dz * dz < r2) applyHit(p, c, dmg, p.el, null, U.kb, 0); }
   return true;
 }
@@ -1010,7 +1029,8 @@ function updateCamera(dt) {
   const p = G.human, d = p.dir, C = CFG.cam; Input.look.dx = Input.look.dy = 0;
   const SS = CFG.feel.streakShake, sk = FEEL.streak >= SS.from ? Math.min(FEEL.streak, SS.cap) / SS.cap : 0, tr = Math.max(FEEL.trauma, sk * SS.floor);
   const sh = tr * tr * CFG.feel.shakeMax * (1 + sk * SS.bonus), al = CFG.arena.postAl - C.back, la = C.la, la2 = C.lookLa, al2 = CFG.arena.postAl + C.ahead, j = () => (Math.random() - 0.5) * 2 * sh;
-  camera.position.set(d[0] * al + d[1] * la + j(), C.y + j(), d[1] * al - d[0] * la + j());
+  const sw = Math.sin(performance.now() * 0.00035), al3 = al + sw * 0.5, la3 = la + Math.cos(performance.now() * 0.00027) * 0.35;          // hafif nefes alan kamera
+  camera.position.set(d[0] * al3 + d[1] * la3 + j(), C.y + sw * 0.15 + j(), d[1] * al3 - d[0] * la3 + j());
   camera.lookAt(d[0] * al2 + d[1] * la2, C.lookY, d[1] * al2 - d[0] * la2);
   camera.rotation.z += (Math.random() - 0.5) * sh * 0.05;
   const f = Cam.baseFov + Math.min(2.2, FEEL.kick) * 2.4; Cam.fov += (f - Cam.fov) * Math.min(1, dt * 12);
@@ -1042,29 +1062,47 @@ function updateHuman(p, dt) {
   if ((p.cd -= dt) <= 0 && p.tgt) { fireHero(p, p.tgt); p.cd = 1 / (CORES[p.build.core].rate * p.stats.rate); }
   if (p.faceT <= 0) p.faceYaw = laneAng(p.edge);
 }
+const lerp = (a, b, k) => a + (b - a) * k;
 function updateHeroCommon(p, dt) {
   if (p.faceT > 0) p.faceT -= dt;
   p.recoil = Math.max(0, p.recoil - dt * 9);
-  p.walk += dt * (p.moving ? (p.sprinting ? 15 : 10) : 0);
-  const sw = p.moving ? Math.sin(p.walk) : 0;
-  p.legs[0].rotation.x = sw * 0.65; p.legs[1].rotation.x = -sw * 0.65; p.shins[0].rotation.x = Math.max(0, -sw) * 0.9; p.shins[1].rotation.x = Math.max(0, sw) * 0.9;
-  p.armL.rotation.x = -0.95 + sw * 0.05 - p.recoil * 0.06; p.head.rotation.y = Math.sin(G.time * 0.9 + p.id) * (p.moving ? 0.05 : 0.22); p.body.rotation.y = sw * 0.06;
-  p.body.position.y = p.moving ? Math.abs(sw) * 0.1 : Math.sin(G.time * 2 + p.id) * 0.03; p.body.rotation.x = -p.recoil * 0.1 + (p.sprinting ? 0.18 : 0);
-  p.gun.position.z = -p.recoil * 0.16; p.gun.rotation.x = -p.recoil * 0.1;
-  p.orb.scale.setScalar(p.ult >= CFG.ult.need ? 1.8 + Math.sin(G.time * 10) * 0.3 : 0.6 + p.ult / 100 * 0.7);
-  let dy = p.faceYaw - p.mesh.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.mesh.rotation.y += dy * Math.min(1, dt * 18);
-  p.mesh.position.set(p.x, 0, p.z);
+  p.walk += dt * (p.moving ? 10 : 0);
+  const sw = p.moving ? Math.sin(p.walk) : 0, e = Math.min(1, dt * 8), t = G.time;
+  // duruş: insan oyuncuda seri kademesi belirler (0 ayakta · 1 diz çökmüş · 2 geniş duruş · 3 diz çökmüş + sol kol havada)
+  let tier = 0;
+  if (p === G.human) { const T = CFG.stance.tiers, st = FEEL.streak; tier = st >= T[2] ? 3 : st >= T[1] ? 2 : st >= T[0] ? 1 : 0; }
+  if (tier !== p.tier) { if (tier > (p.tier || 0)) p.flour = 1; p.tier = tier; p.flT = 0; }
+  if (tier === 3 && (p.flT = (p.flT || 0) + dt) > CFG.stance.flourishEvery) { p.flour = 1; p.flT = 0; }
+  p.kn = lerp(p.kn || 0, tier === 1 || tier === 3 ? 1 : 0, e); p.wd = lerp(p.wd || 0, tier === 2 ? 1 : 0, e); p.up = lerp(p.up || 0, tier === 3 ? 1 : 0, e);
+  p.flour = Math.max(0, (p.flour || 0) - dt * 1.9); p.pump = Math.max(0, (p.pump || 0) - dt * 5);
+  const kn = p.kn, wd = p.wd, fl = p.flour, air = fl > 0 ? Math.sin((1 - fl) * Math.PI) : 0;        // geçişte zıpla + kendi etrafında dön
+  const drop = kn * 0.66 + wd * 0.16 + p.pump * 0.22 * (1 - kn) - air * 0.1;
+  p.legs[0].rotation.x = lerp(sw * 0.65, -1.35, kn) - air * 0.5; p.shins[0].rotation.x = lerp(Math.max(0, -sw) * 0.9, 1.45, kn) + air * 1.0 + p.pump * 0.3 * (1 - kn);
+  p.legs[1].rotation.x = lerp(-sw * 0.65, 0.26, kn) + air * 0.2; p.shins[1].rotation.x = lerp(Math.max(0, sw) * 0.9, 1.4, kn) + air * 1.2 + p.pump * 0.3 * (1 - kn);
+  for (let i = 0; i < 2; i++) { const s = i ? 1 : -1; p.legs[i].rotation.z = s * (0.07 + wd * 0.34 + p.pump * 0.1); p.legs[i].position.y = 1.6 - drop; }
+  p.body.position.y = -drop + Math.sin(t * 2 + p.id) * 0.03; p.body.rotation.x = -p.recoil * 0.1 + wd * 0.14 + kn * 0.06; p.body.rotation.y = sw * 0.06 + wd * Math.sin(t * 6) * 0.05;
+  p.armL.rotation.x = lerp(-0.95 - p.recoil * 0.06, -2.9 + Math.sin(t * 9) * 0.12, p.up); p.armL.rotation.z = lerp(0.3, -0.35, p.up);
+  p.head.rotation.y = Math.sin(t * 0.9 + p.id) * (tier ? 0.06 : 0.2); p.head.rotation.x = -p.up * 0.25;
+  p.gun.position.z = -p.recoil * 0.16; p.gun.rotation.x = -p.recoil * 0.1 - wd * 0.08;
+  p.orb.scale.setScalar(p.ult >= CFG.ult.need ? 1.8 + Math.sin(t * 10) * 0.3 : 0.6 + p.ult / 100 * 0.7);
+  let dy = p.faceYaw - (p.yaw == null ? p.faceYaw : p.yaw); dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.yaw = (p.yaw == null ? p.faceYaw : p.yaw) + dy * Math.min(1, dt * 18);
+  p.mesh.rotation.y = p.yaw + (fl > 0 ? (1 - fl) * TAU : 0);
+  p.mesh.position.set(p.x, air * 1.5, p.z);
 }
 function updateFx(dt) {
   for (let i = G.fxs.length - 1; i >= 0; i--) {
     const f = G.fxs[i]; f.t += dt; const k = f.t / f.life;
     if (k >= 1) { f.mesh.visible = false; fxPool.put(f); G.fxs[i] = G.fxs[G.fxs.length - 1]; G.fxs.pop(); continue; }
-    f.mesh.scale.setScalar(Math.max(0.1, f.r * (0.35 + 0.65 * Math.sqrt(k)))); f.mesh.material.opacity = 0.6 * (1 - k);
+    f.mesh.scale.setScalar(Math.max(0.1, f.r * (0.35 + 0.65 * Math.sqrt(k)))); f.mesh.material.opacity = 0.75 * (1 - k) * (1 - k);
   }
   for (let i = G.rings.length - 1; i >= 0; i--) {
     const f = G.rings[i]; f.t += dt; const k = f.t / f.life;
     if (k >= 1) { f.mesh.visible = false; ringPool.put(f); G.rings[i] = G.rings[G.rings.length - 1]; G.rings.pop(); continue; }
     f.mesh.scale.setScalar(Math.max(0.1, f.r * Math.sqrt(k))); f.mesh.material.opacity = 0.9 * (1 - k) * (1 - k);
+  }
+  for (let i = G.splats.length - 1; i >= 0; i--) {
+    const f = G.splats[i]; f.t += dt;
+    if (f.t >= f.life) { f.mesh.visible = false; splatPool.put(f); G.splats[i] = G.splats[G.splats.length - 1]; G.splats.pop(); } else if (f.life - f.t < 2) f.mesh.material.opacity = 0.85 * (f.life - f.t) / 2;
   }
   for (let i = G.beams.length - 1; i >= 0; i--) {
     const b = G.beams[i]; b.t -= dt;
