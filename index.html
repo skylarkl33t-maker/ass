@@ -333,7 +333,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x8f8f8a, 60, 230);
+scene.fog = new THREE.Fog(0xb9b9b3, 30, 150);
 const camera = new THREE.PerspectiveCamera(100, 1, 0.3, 700);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x4a4a46, 0.7));
 const sun = new THREE.DirectionalLight(0xffffff, 0.8); sun.position.set(50, 90, 30); sun.castShadow = true;
@@ -498,7 +498,7 @@ function buildArena() {
   box(hw * 2, 2.0, 3.2, 0, H - 1.0, a1, cA); box(hw * 2, 0.5, 3.2, 0, 0.05, a1, cB);
   const frameMats = [0, 1, 2].map(() => new THREE.MeshBasicMaterial({ color: 0x1f2022 }));
   box(hw * 2 - 5.6, 0.3, 0.3, 0, H - 2.2, a1 - 1.7, frameMats[0]); box(0.3, H - 2.6, 0.3, hw - 2.8, H / 2 - 0.9, a1 - 1.7, frameMats[1]); box(0.3, H - 2.6, 0.3, -(hw - 2.8), H / 2 - 0.9, a1 - 1.7, frameMats[2]);
-  const pr3 = new THREE.Mesh(new THREE.TorusGeometry(H / 2 - 1.6, 0.1, 4, 44, Math.PI * 1.4), wht); pr3.position.set(0, H / 2 - 0.5, a1); g.add(pr3);
+  const pr3 = new THREE.Object3D();                           // ortadaki dönen çizgi kaldırıldı
   const BY = H / 2, portal = new THREE.Group(); portal.position.set(0, BY, a1 + 15); portal.scale.setScalar(1.45); g.add(portal);
   portal.add(new THREE.Mesh(new THREE.SphereGeometry(6.4, 32, 20), new THREE.MeshBasicMaterial({ color: 0x000000, fog: false })));
   const halo = new THREE.Mesh(new THREE.CircleGeometry(15.5, 48), haloMat); halo.position.z = -0.6; portal.add(halo);
@@ -517,6 +517,20 @@ function buildArena() {
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.8, 3, 8, 1, true), glow(col, 0.2)); beam.position.set(0, 7.9, A.coreAl); beam.visible = false; g.add(beam);
   const off = { offset: { x: 0, y: 0 } }, nol = { intensity: 0, color: new THREE.Color() };
   SC = { frameMats, l3: nol, flash: [0, 0, 0], portalW: { x: p.dir[0] * (a1 + 2), y: H / 2, z: p.dir[1] * (a1 + 2) }, core, ring, beam, veil, pr1, pr2, pr3, light: nol, col: 0xffffff, ribMats, fans: [], pulses: [], ceilMats, starTex: off, dataTex: off, a0, a1, len, hw, H };
+  // pus: portala doğru yoğunlaşan sis katmanları (sahne sisi de uca doğru koyulaşır)
+  const mcv = document.createElement('canvas'); mcv.width = 8; mcv.height = 128; const mgx = mcv.getContext('2d'), mgr = mgx.createLinearGradient(0, 0, 0, 128);
+  mgr.addColorStop(0, 'rgba(255,255,255,0.15)'); mgr.addColorStop(0.55, 'rgba(255,255,255,0.75)'); mgr.addColorStop(1, 'rgba(255,255,255,1)'); mgx.fillStyle = mgr; mgx.fillRect(0, 0, 8, 128);
+  const mtex = new THREE.CanvasTexture(mcv); SC.mist = [];
+  for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(hw * 2, H), new THREE.MeshBasicMaterial({ map: mtex, color: 0xd6d6d0, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide, fog: false })); m.position.set(0, H / 2, a1 - 2 - i * 7); g.add(m); SC.mist.push(m); }
+  // duvar flaşları: arada bir duvarda patlayan ışık (gerçek ışık + parlama lekesi)
+  const fcv = document.createElement('canvas'); fcv.width = fcv.height = 128; const fgx = fcv.getContext('2d'), fgr = fgx.createRadialGradient(64, 64, 2, 64, 64, 64);
+  fgr.addColorStop(0, 'rgba(255,255,255,1)'); fgr.addColorStop(0.25, 'rgba(255,255,255,0.75)'); fgr.addColorStop(1, 'rgba(255,255,255,0)'); fgx.fillStyle = fgr; fgx.fillRect(0, 0, 128, 128);
+  const ftex2 = new THREE.CanvasTexture(fcv); SC.fl = []; SC.flT = 1.5;
+  for (let i = 0; i < 3; i++) {
+    const light = new THREE.PointLight(0xffffff, 0, 34); g.add(light);
+    const quad = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: ftex2, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, fog: false })); g.add(quad);
+    SC.fl.push({ light, quad, v: 0 });
+  }
   // gölge
   const d = p.dir; sun.target.position.set(d[0] * mid, 0, d[1] * mid); scene.add(sun.target); sun.position.set(d[0] * mid + 25, 95, d[1] * mid + 18);
   Object.assign(sun.shadow.camera, { left: -52, right: 52, top: 52, bottom: -52, near: 10, far: 220 }); sun.shadow.camera.updateProjectionMatrix();
@@ -1249,7 +1263,13 @@ function updateScenery(dt) {
   portalMat.uniforms.uTime.value = haloMat.uniforms.uTime.value = t;
   let fmax = 0; for (let k = 0; k < 3; k++) { const f = S.flash[k] = Math.max(0, S.flash[k] - dt * 2.6); fmax = Math.max(fmax, f); S.frameMats[k].color.setScalar(0.12 + f * 0.88); }
   S.l3.intensity = 0.9 + fmax * 3;
-  S.pr1.rotation.z += dt * 1.6; S.pr2.rotation.z += dt * 0.9; S.pr3.rotation.z -= dt * (0.5 + fmax * 5);
+  S.pr1.rotation.z += dt * 1.6; S.pr2.rotation.z += dt * 0.9;
+  for (let i = 0; i < S.mist.length; i++) S.mist[i].material.opacity = (0.075 - i * 0.008) * (0.75 + 0.25 * Math.sin(t * 0.6 + i * 1.7)) + fmax * 0.02;
+  if ((S.flT -= dt) <= 0) {                                   // rastgele bir duvar noktasında flaş patlat
+    S.flT = rand(0.5, 2.6); const f = S.fl.find(q => q.v < 0.05);
+    if (f) { const sd = Math.random() < 0.5 ? -1 : 1, al = rand(S.a0 + 14, S.a1 - 6), y = rand(2.5, S.H - 2.5), sz = rand(4, 9); f.v = 1; f.light.position.set(sd * (S.hw - 1.6), y, al); f.quad.position.set(sd * (S.hw - 0.5), y, al); f.quad.rotation.y = -sd * Math.PI / 2; f.quad.scale.set(sz, sz, 1); }
+  }
+  for (const f of S.fl) { if (f.v <= 0) continue; f.v = Math.max(0, f.v - dt * (f.v > 0.6 ? 14 : 3.2)); const k = f.v * f.v; f.light.intensity = k * 4.2; f.quad.material.opacity = k; }
   S.core.rotation.y += dt * 0.8; S.core.position.y = 4.8 + Math.sin(t * 1.5) * 0.3; S.ring.rotation.x += dt * 1.1; S.ring.rotation.y += dt * 0.6;
   if (L.flash > 0) L.flash -= dt;
   const col = L.flash > 0 || (alarm && Math.sin(t * 8) > 0) ? 0x111111 : S.col;
