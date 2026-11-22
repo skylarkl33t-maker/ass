@@ -220,7 +220,7 @@ const CFG = {
   feel:    { streakWindow: 2.6, shakeMax: 0.9, shakeDecay: 2.2, hitstopScale: 0.05, kickDecay: 9,
              streakShake: { from: 5, cap: 30, floor: 0.24, bonus: 1.1 },   // seri büyüdükçe sürekli titreşim (tavanlı)
              trauma: { shot: 0.035, crit: 0.14, kill: 0.1, combo: 0.26, ult: 0.9, leak: 0.7, boss: 1 } },
-  pools:   { creeps: 320, proj: 380, fx: 110, rings: 48, beams: 72, debris: 460, splats: 70, popups: 44 },
+  pools:   { creeps: 320, proj: 380, fx: 110, rings: 48, beams: 190, debris: 460, splats: 70, popups: 44 },
 };
 
 /* Element = kimlik + doğuştan vuruş özelliği (trait). */
@@ -360,7 +360,7 @@ const shadowed = m => { m.castShadow = true; return m; };
 const GEO = {
   grunt: new THREE.OctahedronGeometry(0.95), runner: new THREE.ConeGeometry(0.75, 1.9, 4), tank: new THREE.DodecahedronGeometry(1.0), boss: new THREE.IcosahedronGeometry(1, 0),
   visor: new THREE.BoxGeometry(0.9, 0.16, 0.2), horn: new THREE.ConeGeometry(0.16, 0.7, 4), crown: new THREE.TorusGeometry(1.15, 0.07, 4, 6),
-  bar: new THREE.PlaneGeometry(1.8, 0.2), proj: new THREE.OctahedronGeometry(0.3), fx: new THREE.SphereGeometry(1, 12, 6), ring: new THREE.RingGeometry(0.82, 1, 28),
+  bar: new THREE.PlaneGeometry(1.8, 0.2), proj: new THREE.BoxGeometry(0.2, 0.2, 1), fx: new THREE.SphereGeometry(1, 12, 6), ring: new THREE.RingGeometry(0.82, 1, 28),
   beam: new THREE.BoxGeometry(1, 1, 1), debris: new THREE.TetrahedronGeometry(0.32),
 };
 const ELMAT = {}; EL_KEYS.forEach(k => ELMAT[k] = new THREE.MeshBasicMaterial({ color: ELEMENTS[k].color }));
@@ -750,21 +750,32 @@ function spawnCreep(lane, type) {
 function removeCreep(c) { c.active = false; c.mesh.visible = false; }
 
 /* ---------------------------- havuzlu efektler ---------------------------- */
-const projPool = new Pool(CFG.pools.proj, () => { const m = new THREE.Mesh(GEO.proj, ELMAT.FIRE); m.visible = false; scene.add(m); return { mesh: m, hit: [] }; });
+const TRACER = new THREE.MeshBasicMaterial({ color: 0xffffff }), TRGEO = new THREE.BoxGeometry(0.09, 0.09, 1.03);
+const MUZZLE_Y = 3.15;
+const projPool = new Pool(CFG.pools.proj, () => { const m = new THREE.Mesh(GEO.proj, ELMAT.FIRE); m.add(new THREE.Mesh(TRGEO, TRACER)); m.visible = false; scene.add(m); return { mesh: m, hit: [] }; });   // siyah gövde + beyaz çekirdek
 function spawnProj(owner, x, z, ux, uz, speed, dmg, el, life, o) {
   const a = projPool.get(); if (!a) return;
   a.owner = owner; a.x = x; a.z = z; a.vx = ux * speed; a.vz = uz * speed; a.speed = speed; a.dmg = dmg; a.el = el; a.life = life;
   a.pierce = o.pierce || 0; a.bounce = o.bounce || 0; a.aoe = o.aoe || 0; a.turn = o.turn || 0; a.target = o.target || null; a.fx = o.fx || null; a.kb = o.kb || 0; a.kbMul = o.kbMul || 0;
   a.r = a.aoe ? 0.8 : 0.5; a.hit.length = 0;
   const w = a.aoe ? 2.2 : o.small ? 0.7 : 1.1;
-  a.mesh.material = ELMAT[el]; a.mesh.scale.set(w, w, a.aoe ? w : w * 4.5); a.mesh.position.set(x, 1.5, z); a.mesh.rotation.y = Math.atan2(ux, uz); a.mesh.visible = owner.id === 0;
+  a.y0 = MUZZLE_Y; a.y1 = o.target ? o.target.by : 1.5; a.td = o.target ? Math.hypot(o.target.x - x, o.target.z - z) || 1 : 20; a.tr = 0;      // namludan hedefin gövdesine
+  a.mesh.material = ELMAT[el]; if (a.aoe) a.mesh.scale.set(3.4, 3.4, 0.68); else a.mesh.scale.set(w, w, o.small ? 2.2 : 3.6); a.mesh.position.set(x, a.y0, z); a.mesh.rotation.y = Math.atan2(ux, uz); a.mesh.visible = owner.id === 0;
   G.projs.push(a);
 }
-const fxPool = new Pool(CFG.pools.fx, () => { const m = new THREE.Mesh(GEO.fx, glow(0xffffff, 0.5)); m.visible = false; scene.add(m); return { mesh: m }; });
-function spawnFx(x, y, z, radius, color, life) {
+/* Efekt dili: her şey siyah konturlu beyaz düz şekil (daire ya da sekiz köşeli yıldız), kameraya dönük. */
+function fxTexture(star) {
+  const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d'); g.translate(64, 64); g.beginPath();
+  if (star) for (let i = 0; i < 16; i++) { const a = i / 16 * TAU, r = i & 1 ? 24 : 56 - (i % 4 ? 12 : 0); g[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r); } else g.arc(0, 0, 54, 0, TAU);
+  g.closePath(); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 9; g.lineJoin = 'miter'; g.strokeStyle = '#0a0a0a'; g.stroke();
+  return new THREE.CanvasTexture(cv);
+}
+const FXT = { disc: fxTexture(false), star: fxTexture(true) }, FXGEO = new THREE.PlaneGeometry(2, 2);
+const fxPool = new Pool(CFG.pools.fx, () => { const m = new THREE.Mesh(FXGEO, new THREE.MeshBasicMaterial({ map: FXT.disc, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false })); m.renderOrder = 4; m.visible = false; scene.add(m); return { mesh: m }; });
+function spawnFx(x, y, z, radius, color, life, star) {
   if (FXOFF) return; const f = fxPool.get(); if (!f) return;
-  f.t = 0; f.life = life || 0.4; f.r = radius;
-  f.mesh.material.color.setHex(color); f.mesh.position.set(x, y, z); f.mesh.scale.setScalar(0.1); f.mesh.visible = true; G.fxs.push(f);
+  f.t = 0; f.life = life || 0.4; f.r = radius; f.roll = star ? rand(0, TAU) : 0;
+  f.mesh.material.map = star ? FXT.star : FXT.disc; f.mesh.position.set(x, y, z); f.mesh.scale.setScalar(0.1); f.mesh.visible = true; G.fxs.push(f);
 }
 const ringPool = new Pool(CFG.pools.rings, () => { const m = new THREE.Mesh(GEO.ring, glow(0xffffff, 0.9)); m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m); return { mesh: m }; });
 function spawnRing(x, z, radius, color, life) {            // zeminde yayılan şok halkası
@@ -773,12 +784,13 @@ function spawnRing(x, z, radius, color, life) {            // zeminde yayılan �
   f.mesh.material.color.setHex(color); f.mesh.position.set(x, 0.12, z); f.mesh.scale.setScalar(0.1); f.mesh.visible = true; G.rings.push(f);
 }
 const beamPool = new Pool(CFG.pools.beams, () => { const m = new THREE.Mesh(GEO.beam, glow(0xffffff, 1)); m.visible = false; scene.add(m); return { mesh: m }; });
-function spawnBeam(x1, y1, z1, x2, y2, z2, color, w) {
+function spawnBeam(x1, y1, z1, x2, y2, z2, color, w) { w = w || 0.16; beamRaw(x1, y1, z1, x2, y2, z2, 0x0a0a0a, w * 2.3 + 0.08); beamRaw(x1, y1, z1, x2, y2, z2, 0xffffff, w); }
+function beamRaw(x1, y1, z1, x2, y2, z2, color, w) {
   if (FXOFF) return; const b = beamPool.get(); if (!b) return;
   const dx = x2 - x1, dy = y2 - y1, dz = z2 - z1, len = Math.hypot(dx, dy, dz) || 0.01;
   b.t = 0.13; b.mesh.material.color.setHex(color); b.mesh.material.opacity = 1;
   b.mesh.position.set((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2); b.mesh.scale.set(w || 0.16, w || 0.16, len);
-  b.mesh.lookAt(x2, y2, z2); b.mesh.visible = true; G.beams.push(b);
+  b.mesh.lookAt(x2, y2, z2); b.mesh.renderOrder = color === 0xffffff ? 3 : 2; b.mesh.visible = true; G.beams.push(b);
 }
 const SPLATG = new THREE.CircleGeometry(1, 9);
 const splatPool = new Pool(CFG.pools.splats, () => { const m = new THREE.Mesh(SPLATG, new THREE.MeshBasicMaterial({ color: 0x0b0b0b, transparent: true, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m); return { mesh: m }; });
@@ -985,7 +997,8 @@ function fireHero(p, tgt) {
   p.faceYaw = Math.atan2(dx, dz); p.faceT = 0.5; p.recoil = 1;
   p.hand ^= 1; p.rec[p.hand] = 1; const sd = p.hand ? 0.36 : -0.36;                    // eller sırayla ateş eder
   const mx = p.x + Math.sin(p.faceYaw) * 1.9 + Math.cos(p.faceYaw) * sd, mz = p.z + Math.cos(p.faceYaw) * 1.9 - Math.sin(p.faceYaw) * sd;
-  spawnFx(mx, 2.6, mz, core.kind === 'beam' ? 0.5 : 1.0, col, 0.07);          // namlu parlaması
+  spawnFx(mx, MUZZLE_Y, mz, core.kind === 'beam' ? 0.6 : 1.25, col, 0.08, true);          // namlu parlaması
+  if (me && core.kind !== 'beam') { const cs2 = Math.cos(p.faceYaw), sn2 = Math.sin(p.faceYaw); pushPix(mx - sn2 * 0.5, MUZZLE_Y, mz - cs2 * 0.5, cs2 * sd * rand(5, 9) - sn2 * 2, rand(4, 7), -sn2 * sd * rand(5, 9) - cs2 * 2, 0.13, 0.82, 0.82, 0.8, 0.9); }   // boş kovan
   if (me) { SFX.shoot(core.kind, el); FEEL.shake(CFG.feel.trauma.shot * (core.kind === 'beam' ? 0.3 : core.aoe || core.pellets ? 2 : 1)); FEEL.kick += core.kind === 'beam' ? 0.05 : core.aoe || core.pellets ? 0.45 : 0.22; }
   if (core.kind === 'proj') {
     const tt = d / core.speed, sp = tgt.stunT > 0 ? 0 : tgt.speed * (tgt.slowT > 0 ? 1 - tgt.slowF : 1);
@@ -1007,7 +1020,7 @@ function fireHero(p, tgt) {
 }
 function beamHit(p, sx, sz, t, dmg, el, col, range, core) {
   const m = p.modv;
-  spawnBeam(sx, 1.5, sz, t.x, t.by, t.z, col, 0.22); spawnBeam(sx, 1.5, sz, t.x, t.by, t.z, 0xffffff, 0.08); spawnFx(t.x, t.by, t.z, 0.9, col, 0.1);
+  spawnBeam(sx, MUZZLE_Y, sz, t.x, t.by, t.z, col, 0.13); spawnFx(t.x, t.by, t.z, 1.2, col, 0.1, true);
   if (m.pierce > 0) {
     const dx = t.x - sx, dz = t.z - sz, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d; let left = m.pierce;
     for (const o of G.creeps) {
@@ -1024,7 +1037,7 @@ function chainHit(p, sx, sz, first, dmg, el, col, jumps, core) {
   let px = sx, pz = sz, cur = first, d = dmg; _vis.length = 0;
   for (let i = 0; i <= jumps && cur; i++) {
     const mx = (px + cur.x) / 2 + rand(-1, 1), mz = (pz + cur.z) / 2 + rand(-1, 1);        // kırık şimşek
-    spawnBeam(px, 1.5, pz, mx, 2.2, mz, col, 0.2); spawnBeam(mx, 2.2, mz, cur.x, cur.by, cur.z, col, 0.2); spawnFx(cur.x, cur.by, cur.z, 1.3, col, 0.12);
+    spawnBeam(px, i ? 1.8 : MUZZLE_Y, pz, mx, 2.6, mz, col, 0.14); spawnBeam(mx, 2.6, mz, cur.x, cur.by, cur.z, col, 0.14); spawnFx(cur.x, cur.by, cur.z, 1.5, col, 0.12, true);
     _vis.push(cur); px = cur.x; pz = cur.z;
     const next = nearestCreep(px, pz, core.jumpR, _vis);
     applyHit(p, cur, d, el, p.modv, core.kb, core.kbMul); d *= core.falloff; cur = next;
@@ -1046,7 +1059,7 @@ function updateProjectiles(dt) {
       const dx = c.x - a.x, dz = c.z - a.z, rr = c.radius + a.r;
       if (dx * dx + dz * dz > rr * rr || a.hit.includes(c)) continue;
       const col = ELEMENTS[a.el].color;
-      spawnFx(a.x, 1.5, a.z, a.aoe ? a.aoe : 1.1, col, a.aoe ? 0.32 : 0.11);                 // çarpma kıvılcımı
+      spawnFx(a.x, c.by, a.z, a.aoe ? a.aoe : 1.7, col, a.aoe ? 0.32 : 0.13, !a.aoe);        // çarpma: yıldız patlaması (alan hasarında dolu daire)
       applyHit(a.owner, c, a.dmg, a.el, a.fx, a.kb, a.kbMul);
       if (a.aoe) {
         spawnRing(a.x, a.z, a.aoe * 1.1, col, 0.35); if (a.owner === G.human) FEEL.shake(0.1);
@@ -1062,7 +1075,7 @@ function updateProjectiles(dt) {
       dead = true; break;
     }
     if (dead) { a.mesh.visible = false; projPool.put(a); L[i] = L[L.length - 1]; L.pop(); }
-    else { a.mesh.position.set(a.x, 1.5, a.z); a.mesh.rotation.y = Math.atan2(a.vx, a.vz); a.mesh.rotation.z += dt * 14; }
+    else { a.tr += a.speed * dt; const k = Math.min(1, a.tr / a.td); a.mesh.position.set(a.x, a.y0 + (a.y1 - a.y0) * k, a.z); a.mesh.rotation.y = Math.atan2(a.vx, a.vz); if (a.aoe) a.mesh.rotation.x += dt * 9; }
   }
 }
 
@@ -1242,7 +1255,8 @@ function updateFx(dt) {
   for (let i = G.fxs.length - 1; i >= 0; i--) {
     const f = G.fxs[i]; f.t += dt; const k = f.t / f.life;
     if (k >= 1) { f.mesh.visible = false; fxPool.put(f); G.fxs[i] = G.fxs[G.fxs.length - 1]; G.fxs.pop(); continue; }
-    f.mesh.scale.setScalar(Math.max(0.1, f.r * (0.35 + 0.65 * Math.sqrt(k)))); f.mesh.material.opacity = 0.75 * (1 - k) * (1 - k);
+    f.mesh.scale.setScalar(Math.max(0.1, f.r * (0.4 + 0.6 * Math.sqrt(k)))); f.mesh.material.opacity = k < 0.45 ? 1 : 1 - (k - 0.45) / 0.55;
+    f.mesh.quaternion.copy(camera.quaternion); if (f.roll) f.mesh.rotateZ(f.roll);
   }
   for (let i = G.rings.length - 1; i >= 0; i--) {
     const f = G.rings[i]; f.t += dt; const k = f.t / f.life;
