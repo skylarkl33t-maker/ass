@@ -170,14 +170,14 @@ const CFG = {
   arena:   { coreAl: 40, spawnAl: 110, postAl: 56, laneHalfW: 8.5, coreR: 3.2 },   // şerit-yerel: al = merkezden uzaklık, la = yanal
   zone:    { aMin: 47, aMax: 76, lat: 7 },                 // oyuncunun sabit hareket alanı
   core:    { hp: 30 },                                       // herkesin KENDİ çekirdeği
-  rounds:  20, bossRounds: [5, 10, 15, 20], prepTime: 5,
+  rounds:  20, bossRounds: [5, 10, 15, 20], prepTime: 3,
   player:  { walk: 8, sprint: 13, stamina: 100, staminaDrain: 22, staminaRegen: 16 },
   crit:    { chance: 0.12, mult: 2.0 },
   target:  { danger: 12 },
   cam:     { back: 6.5, la: 5.6, y: 6.2, ahead: 13, lookLa: -3, lookY: 1.2 },   // sabit köşe kamerası: karakterin arka-üst köşesinden (koridor-yerel)                                  // bu mesafeden yakına giren yaratık her zaman ilk hedef
   combo:   { window: 2.0, icd: 0.9, splash: 0.7, echoLvl: 0.25 },
   ult:     { need: 100, perKill: 3, streakBonus: 0.03, streakCap: 20, radius: 17, dmg: 170, kb: 7 },
-  wave:    { baseCount: 8, countPer: 2, baseHp: 42, hpGrowth: 1.15, spawnWindow: 24, speed: 3.2 },
+  wave:    { baseCount: 8, countPer: 2, baseHp: 32, hpGrowth: 1.13, spawnWindow: 13, speed: 5.4 },
   flawless:{ dmgPerChain: 0.08, maxChain: 5, extraCards: 1 },
   bot:     { dmgBonus: 1.35, wander: 5 },
 
@@ -296,14 +296,14 @@ function genWave(round) {
 /* ======================= 3. GRAPHICS + ENTITIES (POOL) ==================== */
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x8f8f8a, 60, 230);
 const camera = new THREE.PerspectiveCamera(100, 1, 0.3, 700);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x4a4a46, 0.7));
 const sun = new THREE.DirectionalLight(0xffffff, 0.8); sun.position.set(50, 90, 30); sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005;
+sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0005;
 Object.assign(sun.shadow.camera, { left: -85, right: 85, top: 85, bottom: -85, near: 10, far: 220 }); scene.add(sun);
 
 let composer = null, bloomPass = null;
