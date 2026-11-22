@@ -80,7 +80,7 @@
   .pop{position:absolute;left:0;top:0;display:none;will-change:transform,opacity}
   .pop span{display:block;font-weight:400;font-size:12px;color:#fff;text-shadow:0 0 6px #000,0 1px 2px #000;white-space:nowrap;font-variant-numeric:tabular-nums;animation:popin .14s ease-out}
   .pop.crit span{font-size:20px;font-weight:600}
-  .pop.streak span{font-weight:600;letter-spacing:.04em;color:#fff;background:#0b0b0b;padding:1px 5px}
+  .pop.streak span{font-weight:200;letter-spacing:-.03em;line-height:1;color:#fff;animation:none;text-shadow:0 0 10px rgba(0,0,0,.85),0 1px 2px #000}
   .pop.combo span{font-size:11px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;border-bottom:1px solid #fff;padding-bottom:2px}
   @keyframes popin{from{transform:scale(1.9)}to{transform:scale(1)}}
   #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(4,4,5,.84);backdrop-filter:blur(16px) grayscale(1);-webkit-backdrop-filter:blur(16px) grayscale(1);pointer-events:auto;transition:opacity .45s,visibility .45s}
@@ -285,10 +285,10 @@ const PASSIVES = {
 const LVL = { coreDmg: 0.22, mod: 0.5, modSlow: 0.25 };
 
 const CREEPS = {
-  grunt:  { tier: 1, hp: 1,   speed: 1,    leak: 1,  radius: 1.4, ult: 1,  scale: 1.6,  kb: 1,    eye: 0xffffff },
-  runner: { tier: 0, hp: 0.6, speed: 1.6,  leak: 1,  radius: 1.2, ult: 1,  scale: 1.35, kb: 1.2,  eye: 0xd0d3d8 },
-  tank:   { tier: 2, hp: 2.6, speed: 0.7,  leak: 2,  radius: 1.9,ult: 2,  scale: 2.0, kb: 0.45, eye: 0xa4a8ae },
-  boss:   { tier: 3, hp: 12,  speed: 0.5,  leak: 15, radius: 3.6, ult: 14, scale: 3.7,  kb: 0.12, eye: 0xffffff },
+  grunt:  { tier: 1, hp: 1,   speed: 1,    leak: 1,  radius: 1.75, ult: 1,  scale: 1.6,  kb: 1,    eye: 0xffffff },
+  runner: { tier: 0, hp: 0.6, speed: 1.6,  leak: 1,  radius: 1.45, ult: 1,  scale: 1.35, kb: 1.2,  eye: 0xd0d3d8 },
+  tank:   { tier: 2, hp: 2.6, speed: 0.7,  leak: 2,  radius: 2.4,ult: 2,  scale: 2.0, kb: 0.45, eye: 0xa4a8ae },
+  boss:   { tier: 3, hp: 12,  speed: 0.5,  leak: 15, radius: 4.2, ult: 14, scale: 3.7,  kb: 0.12, eye: 0xffffff },
 };
 
 /* ------------------------------ yardımcılar ------------------------------ */
@@ -634,33 +634,36 @@ const creepPool = new Pool(CFG.pools.creeps, () => {
 /* Yaratıklar renkli piksellerden (küplerden) oluşur: tek bir InstancedMesh, her kare yeniden yazılır.
    Sahnedeki tek renk onlardır. Doğarken pikseller toplanır, ölünce her piksel kendi rengiyle saçılır. */
 const PAL = [0xff2d55, 0xff9500, 0xffd60a, 0x30d158, 0x00c7be, 0x40c8ff, 0x5e5ce6, 0xbf5af2, 0xff375f].map(h => new THREE.Color(h));
-/* Desenler: # gövde · + ikinci renk · o göz akı · x göz bebeği · . boş. İkinci dizi yürüyüşün öbür karesi (alt satırlar). */
+/* Desenler: # gövde · + vurgu · o göz akı · x göz bebeği · k siyah bant · . boş. alt: yürüyüşün öbür karesi (son iki satır).
+   Tür başına tek baskın renk (uzaktan türü renk + siluet ayırır); boss dört geniş bantlı, sarı taçlı. */
 const PAT_SRC = {
-  grunt:  { d: 2, rows: ['..#...#..', '...#.#...', '..#####..', '.##o#o##.', '####x####'.replace('x', '#'), '#+#####+#', '#.#####.#', '#.#...#.#', '..##.##..'], alt: ['.##...##.', '##.....##'] },
-  runner: { d: 2, rows: ['...#...', '..###..', '.#o#o#.', '.#####.', '+.###.+', '..###..', '.##.##.', '.#...#.', '#.....#'], alt: ['..#.#..', '..#.#..'] },
-  tank:   { d: 3, rows: ['..#######..', '.#########.', '##+#####+##', '##oo###oo##', '##ox###xo##', '###########', '#####+#####', '.#########.', '.###...###.', '###.....###'], alt: ['..###.###..', '..###.###..'] },
-  boss:   { d: 3, rows: ['#...#####...#', '##.#######.##', '.###########.', '.##ooo#ooo##.', '.##oxo#oxo##.', '.##ooo#ooo##.', '#############', '###+#####+###', '##+++###+++##', '.###########.', '..#########..', '.###.###.###.', '###..###..###'], alt: ['..###.#.###..', '.###..#..###.'] },
+  grunt:  { hue: 0xbf5af2, acc: 0xffd60a, d: 2, rows: ['.#.....#.', '..#...#..', '.#######.', '#oo###oo#', '#ox###xo#', '#########', '#+#####+#', '.##...##.', '.##...##.'], alt: ['..##.##..', '..##.##..'] },
+  runner: { hue: 0xff9500, acc: 0xffffff, d: 2, rows: ['...#...', '..###..', '.#####.', '.oo#oo.', '.ox#xo.', '.#####.', '+.###.+', '..###..', '.##.##.', '.#...#.'], alt: ['..#.#..', '.#...#.'] },
+  tank:   { hue: 0x00c7be, acc: 0xff2d55, d: 3, rows: ['.#########.', '###########', '#ooo###ooo#', '#oxo###oxo#', '#ooo###ooo#', '###########', '##+#####+##', '###########', '.###...###.', '###.....###'], alt: ['..###.###..', '..###.###..'] },
+  boss:   { hue: 0xff2d55, acc: 0xffffff, d: 3, bands: [[2, 0xffd60a], [3, 0x0a0a0a], [6, 0xff2d55], [8, 0xff9500], [10, 0x30d158], [13, 0x40c8ff]],
+            rows: ['#..#..#..#..#', '#############', 'kkkkkkkkkkkkk', '#############', '##ooo###ooo##', '##oxo###oxo##', '##ooo###ooo##', '#############', '###+#####+###', '#############', '.###########.', '.###.###.###.', '###..###..###'], alt: ['..###.#.###..', '.###..#..###.'] },
 };
 const PAT = {}; let PATMAX = 0;
 for (const k in PAT_SRC) {
   const S = PAT_SRC[k], rows = S.rows, h = rows.length, w = rows[0].length, cells = [];
   rows.forEach((r, gy) => { for (let gx = 0; gx < w; gx++) { const ch = r[gx], a = gy >= h - 2 ? S.alt[gy - (h - 2)][gx] : ch; if (ch === '.' && a === '.') continue;
-    for (let gz = 0; gz < S.d; gz++) { const front = gz === S.d - 1, kind = front ? ch : (ch === '.' ? '.' : ch === 'o' || ch === 'x' ? '#' : ch); cells.push([gx, gy, gz, kind, ch !== '.', a !== '.', front]); } } });
-  PAT[k] = { cells, w, h, d: S.d }; PATMAX = Math.max(PATMAX, cells.length);
+    for (let gz = 0; gz < S.d; gz++) { const front = gz === S.d - 1, kind = front ? ch : (ch === '.' ? '#' : ch === 'o' || ch === 'x' ? '#' : ch); cells.push([gx, gy, gz, kind, ch !== '.', a !== '.', front]); } } });
+  PAT[k] = { cells, w, h, d: S.d, hue: new THREE.Color(S.hue), acc: new THREE.Color(S.acc), bands: S.bands ? S.bands.map(q => [q[0], new THREE.Color(q[1])]) : null }; PATMAX = Math.max(PATMAX, cells.length);
 }
-const VOXMAX = 20000, PIXMAX = 5000, PIX = [];
-const voxMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), VOXMAX), pixMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), PIXMAX);
+const VOXMAX = 26000, PIXMAX = 5000, PIX = [];
+const voxMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ fog: false }), VOXMAX), pixMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ fog: false }), PIXMAX);   // sis rengi soldurmasın
 for (const m of [voxMesh, pixMesh]) { m.frustumCulled = false; m.setColorAt(0, PAL[0]); m.count = 0; scene.add(m); } voxMesh.castShadow = true;
 function voxInit(c) {
-  const P = PAT[c.type], vs = c.vsz = c.radius * 2 / P.w, bi = Math.random() * PAL.length | 0, base = PAL[bi], acc = PAL[(bi + 3 + (Math.random() * 3 | 0)) % PAL.length], boss = c.type === 'boss';
+  const P = PAT[c.type], vs = c.vsz = c.radius * 2 / P.w;
   if (!c.vc) { c.vc = new Float32Array(PATMAX * 3); c.vs = new Float32Array(PATMAX * 3); }
-  c.c1 = base; c.c2 = acc;
+  c.c1 = P.hue; c.c2 = P.bands ? P.bands[3][1] : P.acc;
   for (let i = 0; i < P.cells.length; i++) {
     const q = P.cells[i], kd = q[3]; let r, g, b;
-    if (kd === 'o') r = g = b = 1; else if (kd === 'x') r = g = b = 0.04;
+    if (kd === 'o') r = g = b = 1; else if (kd === 'x' || kd === 'k') r = g = b = 0.04;
     else {
-      const col = kd === '+' ? acc : boss ? PAL[(bi + (q[1] >> 1)) % PAL.length] : base;
-      const k = (q[6] ? 1 : 0.55 + 0.12 * q[2]) * (1.14 - 0.3 * q[1] / P.h) * rand(0.93, 1.05);        // arka katman koyu, üst satırlar aydınlık
+      let col = kd === '+' ? P.acc : P.hue; if (P.bands && kd !== '+') for (const bd of P.bands) if (q[1] < bd[0]) { col = bd[1]; break; }
+      // üç ton: gövde · gölge (arka katman ve alt iki satır) · vurgu; üst satır bir tık aydınlık
+      const k = (q[6] ? 1 : 0.66) * (q[1] === 0 ? 1.14 : q[1] >= P.h - 2 ? 0.74 : 1 - 0.1 * q[1] / P.h);
       r = Math.min(1, col.r * k); g = Math.min(1, col.g * k); b = Math.min(1, col.b * k);
     }
     c.vc[i * 3] = r; c.vc[i * 3 + 1] = g; c.vc[i * 3 + 2] = b;
@@ -671,7 +674,7 @@ function voxInit(c) {
 function voxPos(c, i, out, ek) {          // i. pikselin dünya konumu
   const P = PAT[c.type], q = P.cells[i], vs = c.vsz, inv = 1 - ek, pu = 1 + c.punch * 0.22;
   const lx = (q[0] - (P.w - 1) / 2) * vs * pu + c.vs[i * 3] * inv + Math.sin(c.ph * 0.5 + q[1] * 0.5) * vs * 0.12, lz = (q[2] - (P.d - 1) / 2) * vs + c.vs[i * 3 + 2] * inv;
-  out[0] = c.x + c.uz * lx + c.ux * lz; out[1] = (P.h - 1 - q[1] + 0.5) * vs * (1 - c.punch * 0.18) + (c.stunT > 0 ? 0 : Math.abs(Math.sin(c.ph)) * vs * 0.6) + c.vs[i * 3 + 1] * inv; out[2] = c.z - c.ux * lx + c.uz * lz;
+  out[0] = c.x + c.uz * lx + c.ux * lz; out[1] = (P.h - 1 - q[1] + 0.5) * vs * (1 - c.punch * 0.18) + (c.stunT > 0 ? 0 : Math.abs(Math.sin(c.ph)) * vs) + c.vs[i * 3 + 1] * inv; out[2] = c.z - c.ux * lx + c.uz * lz;
 }
 const _vp = [0, 0, 0];
 function renderVoxels() {
@@ -680,13 +683,16 @@ function renderVoxels() {
     if (!c.active || c.lane !== 0) continue;
     const cells = PAT[c.type].cells, ek = 1 - (1 - c.born) * (1 - c.born), s = c.vsz * 0.93 * (0.3 + 0.7 * ek), cs = c.uz, sn = c.ux, fl = c.flash > 0;
     const frame = c.stunT > 0 ? 4 : Math.sin(c.ph) > 0 ? 4 : 5, shut = (G.time + c.blink) % 3.2 < 0.12;                 // iki kareli yürüyüş + göz kırpma
-    if (Math.random() < 0.12) { const i = Math.random() * cells.length | 0; if (cells[i][3] === '#') { const pc = PAL[Math.random() * PAL.length | 0]; c.vc[i * 3] = pc.r; c.vc[i * 3 + 1] = pc.g; c.vc[i * 3 + 2] = pc.b; } }   // piksel parıltısı
     for (let i = 0; i < cells.length && n < VOXMAX; i++) {
       const q = cells[i]; if (!q[frame]) continue;
       voxPos(c, i, _vp, ek); const o = n * 16, j = n * 3;
       M[o] = s * cs; M[o + 1] = 0; M[o + 2] = -s * sn; M[o + 3] = 0; M[o + 4] = 0; M[o + 5] = s; M[o + 6] = 0; M[o + 7] = 0; M[o + 8] = s * sn; M[o + 9] = 0; M[o + 10] = s * cs; M[o + 11] = 0; M[o + 12] = _vp[0]; M[o + 13] = _vp[1]; M[o + 14] = _vp[2]; M[o + 15] = 1;
       if (fl) C[j] = C[j + 1] = C[j + 2] = 1; else if (shut && (q[3] === 'o' || q[3] === 'x')) C[j] = C[j + 1] = C[j + 2] = 0.05; else { C[j] = c.vc[i * 3]; C[j + 1] = c.vc[i * 3 + 1]; C[j + 2] = c.vc[i * 3 + 2]; }
       n++;
+      if (q[2] === 0 && n < VOXMAX) {                      // siyah siluet konturu: arka katmanın ardında büyütülmüş siyah küp
+        const o2 = n * 16, j2 = n * 3, s2 = s * 1.42, bk = c.vsz * 0.55; M[o2] = s2 * cs; M[o2 + 1] = 0; M[o2 + 2] = -s2 * sn; M[o2 + 3] = 0; M[o2 + 4] = 0; M[o2 + 5] = s2; M[o2 + 6] = 0; M[o2 + 7] = 0; M[o2 + 8] = s * sn; M[o2 + 9] = 0; M[o2 + 10] = s * cs; M[o2 + 11] = 0;
+        M[o2 + 12] = _vp[0] - sn * bk; M[o2 + 13] = _vp[1]; M[o2 + 14] = _vp[2] - cs * bk; M[o2 + 15] = 1; C[j2] = C[j2 + 1] = C[j2 + 2] = fl ? 1 : 0.03; n++;
+      }
     }
   }
   voxMesh.count = n; voxMesh.instanceMatrix.needsUpdate = true; voxMesh.instanceColor.needsUpdate = true;
@@ -866,7 +872,7 @@ const FEEL = {
     this.streak++; this.streakT = CFG.feel.streakWindow; if (this.streak > this.best) this.best = this.streak;
     SFX.kill(this.streak); this.marker('kill', c); this.shake(boss ? T.boss : T.kill);
     if (boss) { this.stop(0.3); this.flash(); SFX.bossDie(); banner('BOSS YIKILDI!', '#ffd76a'); } else if (c.type === 'tank') this.stop(0.05);
-    if (this.streak >= 2) popup(c.x, c.h + 1.4, c.z, 'x' + this.streak, 'streak', 12 + Math.min(this.streak, 40) * 0.3);       // çarpan, ölen yaratığın üstünde
+    if (this.streak >= 2) popup(c.x, c.h + 1.4, c.z, 'x' + this.streak, 'streak', 26 + Math.min(this.streak, 40) * 0.55);       // çarpan, ölen yaratığın üstünde
     const pi = poseIndex(this.streak); if (pi !== this.pose) { this.pose = pi; if (this.streak >= CFG.stance.every) comboBanner(POSES[pi].name); }
   },
   update(dt) {
@@ -1331,7 +1337,7 @@ const UI = {
       if (o.t >= o.life) { o.el.style.display = 'none'; this.popPool.put(o); this.pops[i] = this.pops[this.pops.length - 1]; this.pops.pop(); continue; }
       _v.set(o.x + o.dx * o.t, o.y + o.t * 2.6, o.z).project(camera);
       if (_v.z > 1 || _v.z < -1) { o.el.style.opacity = 0; continue; }
-      o.el.style.opacity = 1 - (o.t / o.life) ** 3;
+      o.el.style.opacity = o.cls === 'streak' ? Math.min(1, o.t / 0.28) * Math.min(1, (o.life - o.t) / 0.55) : 1 - (o.t / o.life) ** 3;      // çarpan: yumuşak gir, yumuşak çık
       o.sx = (_v.x * 0.5 + 0.5) * W; o.sy = (-_v.y * 0.5 + 0.5) * H - o.oy;
       o.el.style.transform = 'translate(' + (o.sx | 0) + 'px,' + (o.sy | 0) + 'px) translate(-50%,-50%)';
     }
@@ -1353,11 +1359,11 @@ const UI = {
 function popup(x, y, z, text, cls, size) {
   let o = UI.popPool.get();
   if (!o) { if (!cls) return; o = UI.pops.shift(); if (!o) return; }
-  o.x = x; o.y = y; o.z = z; o.dx = rand(-1.2, 1.2); o.t = 0; o.life = cls === 'combo' ? 1.2 : cls === 'crit' ? 0.9 : cls === 'streak' ? 0.85 : 0.6; if (cls) o.dx = 0;
+  o.x = x; o.y = y; o.z = z; o.dx = rand(-1.2, 1.2); o.t = 0; o.life = cls === 'combo' ? 1.2 : cls === 'crit' ? 0.9 : cls === 'streak' ? 1.25 : 0.6; if (cls) o.dx = 0; o.cls = cls;
   o.el.firstChild.style.fontSize = size ? size + 'px' : '';
   // üst üste binmeyi önle: aynı ekran bölgesinde yazı varsa yukarı kaydır
   _v.set(x, y, z).project(camera); const sx = (_v.x * 0.5 + 0.5) * VW, sy = (-_v.y * 0.5 + 0.5) * VH; let oy = 0;
-  for (let k = 0; k < 8; k++) { let hit = false; for (const q of UI.pops) if (Math.abs(q.sx - sx) < 54 && Math.abs(q.sy - (sy - oy)) < 18) { hit = true; break; } if (!hit) break; oy += 19; }
+  for (let k = 0; k < 8; k++) { let hit = false; for (const q of UI.pops) if (Math.abs(q.sx - sx) < 58 && Math.abs(q.sy - (sy - oy)) < (cls === 'streak' || q.cls === 'streak' ? 30 : 18)) { hit = true; break; } if (!hit) break; oy += 20; }
   o.oy = oy; o.sx = sx; o.sy = sy - oy;
   o.el.firstChild.textContent = text; o.el.className = 'pop ' + (cls || ''); o.el.style.display = 'none'; void o.el.offsetWidth; o.el.style.display = 'block'; o.el.style.opacity = 0; UI.pops.push(o);
 }
