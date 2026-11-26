@@ -558,7 +558,7 @@ def render(ev, stems_dir=None):
             "reverb_return": (wetP[0] + wetHL, wetP[1] + wetHR),
         }
         for k, (l, r_) in st.items():
-            write_wav(os.path.join(stems_dir, f"stem_{k}.wav"), l, r_, normalise=False)
+            write_wav(os.path.join(stems_dir, f"stem_{k}.wav"), l, r_, normalise=True)
     return ML, MR
 
 
